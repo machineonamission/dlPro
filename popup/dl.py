@@ -1,5 +1,7 @@
-
+import http
 import ssl
+import urllib
+
 ssl._create_default_https_context = ssl._create_unverified_context
 
 import pyodide_http
@@ -19,12 +21,27 @@ from yt_dlp import YoutubeDL
 
 ydl_opts = {
     "outtmpl": "/dl/%(title)s [%(id)s].%(ext)s.",
+    "format": "bestvideo+bestaudio/best",
 }
 
 filename = None
 
 with YoutubeDL(ydl_opts) as ydl:
-    info_dict = ydl.extract_info("https://www.youtube.com/watch?v=cvdD7uyw2NE", download=False)
+    info_dict = ydl.extract_info("https://www.youtube.com/watch?v=EX_8ZjT2sO4", download=False)
+    if 'formats' in info_dict:
+        print(f"Available formats for: {info_dict.get('title', 'Unknown Title')}")
+        for format_entry in info_dict['formats']:
+            format_id = format_entry.get('format_id')
+            ext = format_entry.get('ext')
+            resolution = format_entry.get('resolution')
+            vcodec = format_entry.get('vcodec')
+            acodec = format_entry.get('acodec')
+            filesize = format_entry.get('filesize')
+            filesize_approx = format_entry.get('filesize_approx')
+
+            print(f"  ID: {format_id}, Ext: {ext}, Resolution: {resolution}, "
+                  f"VCodec: {vcodec}, ACodec: {acodec}, "
+                  f"Filesize: {filesize or filesize_approx} bytes")
     filename = ydl.prepare_filename(info_dict)
     ydl.process_info(info_dict)
 
