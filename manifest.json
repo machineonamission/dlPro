@@ -5,12 +5,12 @@
   "description": "",
   "version": "0.0.1",
   "action": {
-    "default_title": "ytdlpxtn",
-    "default_popup": "popup/index.html"
+    "default_title": "ytdlpxtn"
   },
-  "options_page": "popup/index.html",
   "permissions": [
-    "storage", "activeTab", "cookies"
+    "storage",
+    "scripting",
+    "cookies"
   ],
   "host_permissions": [
     "*://*/*"
@@ -18,24 +18,17 @@
   "content_security_policy": {
     "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self';"
   },
-  "content_scripts": [
-    {
-      "matches": [
-        "https://*.youtube.com/*"
-      ],
-      "js": [
-        "./popup/pyodide/pyodide.js",
-        "./popup/index.js"
-      ]
-    }
-  ],
   "web_accessible_resources": [
     {
       "resources": [
-        "popup/*"
+        "*"
       ],
       "matches": [
         "<all_urls>"
       ]
-    }]
+    }
+  ],
+  "background": {
+    "service_worker": "background.js"
+  }
 }

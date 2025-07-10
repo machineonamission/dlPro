@@ -22,6 +22,7 @@ from yt_dlp import YoutubeDL
 ydl_opts = {
     "outtmpl": "/dl/%(title)s [%(id)s].%(ext)s.",
     "format": "bestvideo+bestaudio/best",
+    "cookiefile": "/cookies.txt"
 }
 
 filename = None

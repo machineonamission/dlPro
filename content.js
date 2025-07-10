@@ -1,12 +1,18 @@
 // thanks to https://github.com/warren-bank/crx-yt-dlp for a quick start
-// TODO: pass browser cookies to yt-dlp so it doesnt get confused
 
-async function main() {
+// content-script.js
+chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+    if (msg.type === 'INIT') {
+        main(msg.data);
+    }
+});
+
+async function main(cookies) {
     let pyodide = await loadPyodide();
     // await pyodide.loadPackage("micropip");
     // const micropip = pyodide.pyimport("micropip");
     // await micropip.install('yt-dlp');
-    await pyodide.loadPackage(chrome.runtime.getURL("popup/yt_dlp-2025.6.30-py3-none-any.whl"))
+    await pyodide.loadPackage(chrome.runtime.getURL("pyodide/yt_dlp-2025.6.30-py3-none-any.whl"))
     await pyodide.loadPackage('pyodide_http')
     await pyodide.loadPackage("ssl");
 
@@ -15,7 +21,10 @@ async function main() {
     pyodide.FS.mkdirTree(mountDir);
     pyodide.FS.mount(pyodide.FS.filesystems.IDBFS, {}, mountDir);
 
-    const result = await pyodide.runPython(await (await fetch(chrome.runtime.getURL("popup/dl.py"))).text());
+
+    pyodide.FS.writeFile('/cookies.txt', cookies);
+
+    const result = await pyodide.runPython(await (await fetch(chrome.runtime.getURL("dl.py"))).text());
 
     console.log(result)
     const button = document.createElement('button');
@@ -39,7 +48,4 @@ async function main() {
         await writable.write(data);
         await writable.close();
     }
-
-
 };
-main();
