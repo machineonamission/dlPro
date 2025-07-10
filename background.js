@@ -3,11 +3,12 @@ chrome.action.onClicked.addListener(async (tab) => {
     // inject the code
     await chrome.scripting.executeScript({
         target: {tabId: tab.id},
-        files: ["pyodide/pyodide.js", "content.js"],
+        files: ["pyodide/pyodide.js", "ffmpeg/ffmpeg.js", /*"ffmpeg/utils.js",*/ "ffmpeg-bridge.js", "content.js"],
         injectImmediately: true,
+        world:"ISOLATED"
     });
     // gather cookies (can only be done from the background script)
-    const cookies = await chrome.cookies.getAll({url:tab.url});
+    const cookies = await chrome.cookies.getAll({url: tab.url});
     // serialize to a format yt-dlp expects
     const sCookies = netscapeSerializer(cookies);
     // send cookies
@@ -17,6 +18,8 @@ chrome.action.onClicked.addListener(async (tab) => {
     });
 });
 
+// ripped from https://github.com/kairi003/Get-cookies.txt-LOCALLY/blob/master/src/modules/cookie_format.mjs
+// Converts cookies from Chrome's JSON format to Netscape format (which is what yt-dlp expects).
 function jsonToNetscapeMapper(cookies) {
     return cookies.map(
         ({domain, expirationDate, path, secure, name, value}) => {

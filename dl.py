@@ -1,13 +1,18 @@
+import asyncio
 import http
 import ssl
 import urllib
+import subprocess
 
 ssl._create_default_https_context = ssl._create_unverified_context
 
 import pyodide_http
+
 pyodide_http.patch_all()
 
 original_urlopen = pyodide_http._urllib.urlopen
+
+
 def modified_urlopen(url, *args, **kwargs):
     response = original_urlopen(url, *args, **kwargs)
     if isinstance(url, pyodide_http._urllib.urllib.request.Request):
@@ -15,9 +20,33 @@ def modified_urlopen(url, *args, **kwargs):
     else:
         response.url = url
     return response
+
+
 pyodide_http._urllib.urlopen = modified_urlopen
 
+
+
 from yt_dlp import YoutubeDL
+
+import yt_dlp.utils._utils
+
+
+
+orig_popen = yt_dlp.utils._utils.Popen
+
+class PopenPatch(orig_popen):
+    def __init__(self, *args, **kwargs):
+        raise Exception("yt-dlp called Popen directly instead of .run(), this isnt supported.")
+    @classmethod
+    def run(cls, *args, **kwargs):
+        if args[0][0] == "ffmpeg":
+            from js import ffmpegbridge
+            return asyncio.run(ffmpegbridge(args[1:]))
+        else:
+            raise Exception(f"yt-dlp attempted to call {args}, which isnt supported.")
+
+
+yt_dlp.utils._utils.Popen = PopenPatch
 
 ydl_opts = {
     "outtmpl": "/dl/%(title)s [%(id)s].%(ext)s.",

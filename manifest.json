@@ -8,7 +8,6 @@
     "default_title": "ytdlpxtn"
   },
   "permissions": [
-    "storage",
     "scripting",
     "cookies"
   ],

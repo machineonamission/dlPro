@@ -1,32 +1,32 @@
 // thanks to https://github.com/warren-bank/crx-yt-dlp for a quick start
 
-// content-script.js
+// receive cookies from the background script
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     if (msg.type === 'INIT') {
-        main(msg.data);
+        // main(msg.data);
     }
 });
 
+ffmpegbridge();
+
 async function main(cookies) {
+    // load Pyodide and import required things
     let pyodide = await loadPyodide();
-    // await pyodide.loadPackage("micropip");
-    // const micropip = pyodide.pyimport("micropip");
-    // await micropip.install('yt-dlp');
     await pyodide.loadPackage(chrome.runtime.getURL("pyodide/yt_dlp-2025.6.30-py3-none-any.whl"))
     await pyodide.loadPackage('pyodide_http')
     await pyodide.loadPackage("ssl");
 
-
+    // mount non memory filesystem for downloading
     let mountDir = "/dl";
     pyodide.FS.mkdirTree(mountDir);
     pyodide.FS.mount(pyodide.FS.filesystems.IDBFS, {}, mountDir);
-
-
+    // pass cookie file
     pyodide.FS.writeFile('/cookies.txt', cookies);
-
-    const result = await pyodide.runPython(await (await fetch(chrome.runtime.getURL("dl.py"))).text());
+    // run the Python script to download the video
+    const result = await pyodide.runPythonAsync(await (await fetch(chrome.runtime.getURL("dl.py"))).text());
 
     console.log(result)
+    // very temporary download code
     const button = document.createElement('button');
     button.textContent = 'Click Me';
     document.body.appendChild(button);
