@@ -1,18 +1,16 @@
 import asyncio
-import http
 import ssl
-import urllib
-import subprocess
+import json
 
+# honestly no idea what this patch does
 ssl._create_default_https_context = ssl._create_unverified_context
 
+# attach url open to web browser
 import pyodide_http
-
 pyodide_http.patch_all()
 
+# patch some weird pyodide http bug
 original_urlopen = pyodide_http._urllib.urlopen
-
-
 def modified_urlopen(url, *args, **kwargs):
     response = original_urlopen(url, *args, **kwargs)
     if isinstance(url, pyodide_http._urllib.urllib.request.Request):
@@ -20,33 +18,17 @@ def modified_urlopen(url, *args, **kwargs):
     else:
         response.url = url
     return response
-
-
 pyodide_http._urllib.urlopen = modified_urlopen
 
-
-
-from yt_dlp import YoutubeDL
-
-import yt_dlp.utils._utils
-
-
-
-orig_popen = yt_dlp.utils._utils.Popen
-
-class PopenPatch(orig_popen):
-    def __init__(self, *args, **kwargs):
-        raise Exception("yt-dlp called Popen directly instead of .run(), this isnt supported.")
-    @classmethod
-    def run(cls, *args, **kwargs):
-        if args[0][0] == "ffmpeg":
-            from js import ffmpegbridge
-            return asyncio.run(ffmpegbridge(args[1:]))
-        else:
-            raise Exception(f"yt-dlp attempted to call {args}, which isnt supported.")
-
-
-yt_dlp.utils._utils.Popen = PopenPatch
+# patch yt-dlp to not call subprocesses, but to call ffmpeg.wasm
+import yt_dlp.utils._utils as yutils
+def popen_run(cls, *args, **kwargs):
+    if args[0][0] == "ffmpeg":
+        from js import ffmpegbridge
+        return json.loads(asyncio.run(ffmpegbridge(json.dumps(args[0][1:]))))
+    else:
+        raise Exception(f"yt-dlp attempted to call {args}, which isnt supported.")
+yutils.Popen.run = classmethod(popen_run)
 
 ydl_opts = {
     "outtmpl": "/dl/%(title)s [%(id)s].%(ext)s.",
@@ -54,10 +36,14 @@ ydl_opts = {
     "cookiefile": "/cookies.txt"
 }
 
+import yt_dlp.YoutubeDL
+
 filename = None
 
-with YoutubeDL(ydl_opts) as ydl:
-    info_dict = ydl.extract_info("https://www.youtube.com/watch?v=EX_8ZjT2sO4", download=False)
+with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+    print("extracting info")
+    info_dict = ydl.extract_info(downloadURL, download=False)
+    print(info_dict)
     if 'formats' in info_dict:
         print(f"Available formats for: {info_dict.get('title', 'Unknown Title')}")
         for format_entry in info_dict['formats']:
@@ -72,7 +58,8 @@ with YoutubeDL(ydl_opts) as ydl:
             print(f"  ID: {format_id}, Ext: {ext}, Resolution: {resolution}, "
                   f"VCodec: {vcodec}, ACodec: {acodec}, "
                   f"Filesize: {filesize or filesize_approx} bytes")
-    filename = ydl.prepare_filename(info_dict)
+    # TODO: playlist support
+    print("processing info and downloading")
     ydl.process_info(info_dict)
 
 print(filename)

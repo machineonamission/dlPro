@@ -5,7 +5,7 @@ chrome.action.onClicked.addListener(async (tab) => {
         target: {tabId: tab.id},
         files: ["pyodide/pyodide.js", "ffmpeg/ffmpeg.js", /*"ffmpeg/utils.js",*/ "ffmpeg-bridge.js", "content.js"],
         injectImmediately: true,
-        world:"ISOLATED"
+        world: "ISOLATED"
     });
     // gather cookies (can only be done from the background script)
     const cookies = await chrome.cookies.getAll({url: tab.url});
