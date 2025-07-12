@@ -72,21 +72,49 @@ XMLHttpRequest.prototype.setRequestHeader = function (name, value) {
 //     return burl;
 // };
 
+// fix workers to always be classic, and trust urls for youtube
+(() => {
+    // Save the original Worker constructor
+    const NativeWorker = self.Worker;
+
+    // Create a drop-in replacement
+    function PatchedWorker(scriptURL, options = {}) {
+        // Always force classic mode
+        const opts = Object.assign({}, options, {type: 'classic'});
+        // worker urls need to be trusted i guess
+        if (trustedTypes && trustedTypes.createPolicy) {
+            const policy = trustedTypes.defaultPolicy || trustedTypes.createPolicy('ytdlpxtn', {
+                // Here we simply pass through—the blob URL is already trusted by you.
+                createScriptURL: url => url,
+            });
+            scriptURL = policy.createScriptURL(scriptURL);
+        }
+        return new NativeWorker(scriptURL, opts);
+    }
+
+    // Preserve prototype chain and static properties
+    PatchedWorker.prototype = NativeWorker.prototype;
+    Object.setPrototypeOf(PatchedWorker, NativeWorker);
+
+    // Replace the global Worker
+    self.Worker = PatchedWorker;
+})();
+
 // ffmpeg-bridge needs access to the pyodide filesystem, make it global
 let pyodide;
 
 // thanks to https://github.com/warren-bank/crx-yt-dlp for a quick start
 async function main() {
-    console.log("loading js libs")
-    importScripts(
-        await toBlobURL(await chromeruntimeurl("pyodide/pyodide.js"), "text/javascript"),
-        await toBlobURL(await chromeruntimeurl("ffmpeg/ffmpeg.js"), "text/javascript",
-            // stupid fucking webpack bug
-            "let document = {};"),
-        await toBlobURL(await chromeruntimeurl("ffmpeg-bridge.js"), "text/javascript"),
-        await toBlobURL(await chromeruntimeurl("worker_utils.js"), "text/javascript"),
-    )
-    console.log("js libs loaded");
+    // console.log("loading js libs")
+    // importScripts(
+    //     await toBlobURL(await chromeruntimeurl("pyodide/pyodide.js"), "text/javascript"),
+    //     await toBlobURL(await chromeruntimeurl("ffmpeg/ffmpeg.js"), "text/javascript",
+    //         // stupid fucking webpack bug
+    //         "let document = {};"),
+    //     await toBlobURL(await chromeruntimeurl("ffmpeg-bridge.js"), "text/javascript"),
+    //     await toBlobURL(await chromeruntimeurl("worker_utils.js"), "text/javascript"),
+    // )
+    // console.log("js libs loaded");
     // load Pyodide and import required things
     console.log("Loading Pyodide");
     pyodide = await loadPyodide({
@@ -137,6 +165,6 @@ async function main() {
 }
 
 main().catch(e => {
-    console.log("⚠️ FATAL ERROR", JSON.stringify(e));
+    console.log("⚠️ FATAL ERROR", JSON.stringify(e, Object.getOwnPropertyNames(e)));
     throw e
 })

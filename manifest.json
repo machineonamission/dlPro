@@ -9,7 +9,8 @@
   },
   "permissions": [
     "scripting",
-    "cookies"
+    "cookies",
+    "declarativeNetRequest"
   ],
   "host_permissions": [
     "*://*/*"
@@ -29,5 +30,12 @@
   ],
   "background": {
     "service_worker": "background.js"
+  },
+  "declarative_net_request": {
+    "rule_resources": [{
+      "id": "csp_rules",
+      "enabled": true,
+      "path": "csp_rules.json"
+    }]
   }
 }

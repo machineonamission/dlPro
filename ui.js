@@ -20,7 +20,6 @@ async function inject_ui() {
     shadow = host.attachShadow({mode: 'open'});
     shadow.innerHTML = (await (await fetch(chrome.runtime.getURL("ui-base.html"))).text());
     html_console = shadow.querySelector('#console');
-    console.log("Loading JS libraries")
 }
 
 inject_ui()

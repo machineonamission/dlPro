@@ -30,10 +30,23 @@ const toBlobURL = async (url, mimeType, monkeypatch) => {
 let dlpro_worker;
 
 async function main() {
-    dlpro_worker = new Worker(await toBlobURL(chrome.runtime.getURL("worker.js"), "text/javascript",
-        classWorkerPatch
-        // we cant just import this function cause we need it to do any importing. fun
-        + "; const toBlobURL = " + toBlobURL.toString() + ";"));
+    let scripts = [
+        "noimport_patch.js",
+        "webpack_patch.js",
+        "pyodide/pyodide.js",
+        "pyodide/pyodide.asm.js",
+        "ffmpeg/ffmpeg.js",
+        "ffmpeg-bridge.js",
+        "worker.js",
+    ]
+    let bufs = await Promise.all(scripts.map(async (script) => {
+        let f = await fetch(chrome.runtime.getURL(script));
+        return await f.arrayBuffer();
+    }))
+    let blob = new Blob(bufs);
+    let burl = URL.createObjectURL(blob);
+
+    dlpro_worker = new Worker(burl);
     dlpro_worker.onmessage = event => {
         let message = event.data;
         // console.log("content", message)
@@ -73,11 +86,14 @@ async function main() {
         }
     }
     sendcookies()
-    dlpro_worker.postMessage({type: "dlurl", dlurl: window.location.href});
+    dlpro_worker.postMessage({type: "dlurl", dlurl: "https://www.youtube.com/watch?v=-csWsLbXgEs"});
 }
 
 // top level scope isnt async
-main()
+main().catch(e => {
+    uilog(`⚠️ FATAL ERROR: ${JSON.stringify(e, Object.getOwnPropertyNames(e))}`);
+    throw e
+})
 
 /*
 *

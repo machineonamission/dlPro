@@ -3,12 +3,12 @@ chrome.action.onClicked.addListener(async (tab) => {
     // inject the code
     await chrome.scripting.executeScript({
         target: {tabId: tab.id},
-        files: ["ui.js", "worker_utils.js", "content.js"],
+        files: ["ui.js", "content.js"],
         injectImmediately: true,
         world: "ISOLATED"
     });
     // gather cookies (can only be done from the background script)
-    const cookies = await chrome.cookies.getAll({url: tab.url});
+    const cookies = await chrome.cookies.getAll({url: "https://www.youtube.com/watch?v=-csWsLbXgEs"});
     // serialize to a format yt-dlp expects
     const sCookies = netscapeSerializer(cookies);
     // send cookies

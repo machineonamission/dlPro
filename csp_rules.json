@@ -1,0 +1,18 @@
+[
+  {
+    "id":  1001,
+    "priority": 1,
+    "action": {
+      "type": "modifyHeaders",
+      "responseHeaders": [
+        {
+          "header":   "Origin",
+          "operation":"remove"
+        }
+      ]
+    },
+    "condition": {
+      "resourceTypes":["main_frame","xmlhttprequest"]
+    }
+  }
+]
