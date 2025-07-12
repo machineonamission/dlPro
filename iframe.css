@@ -1,0 +1,45 @@
+#console {
+    flex: 1;           /* grow to fill available space */
+    overflow: auto;
+    /*height: 50vh;*/
+    /*width: 50vw;*/
+    border: 0.25rem solid #fff;
+    border-radius: 0.5rem;
+    font-size: 1.2rem;
+    padding: 0.5rem;
+    margin: 0;
+}
+
+p {
+    margin-top: 0;
+    font-size: 1.5rem;
+}
+
+h1 {
+    font-size: 4rem;
+    margin-top: 0;
+    margin-bottom: 0.25em;
+}
+
+.download {
+    width: 100%;
+    font-size: 2em;
+    border: none;
+    border-radius: 2em;
+    font-family: unset;
+}
+
+body, html {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    background: transparent;
+    /*contents styling*/
+    color: white;
+    font-family: sans-serif;
+}
+body {
+    display: flex;
+    flex-direction: column;
+}

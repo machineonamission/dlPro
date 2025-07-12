@@ -2,7 +2,7 @@
 const originalConsoleLog = console.log;
 console.log = function (...args) {
     originalConsoleLog.call(console, "[dlPro]", ...args);
-    postMessage({
+    iframe_port.postMessage({
         type: "log",
         data: args.map(arg => {
             try {
@@ -20,7 +20,11 @@ let cookie_promise;
 let dlurl;
 let dlurl_promise;
 
-onmessage = function (event) {
+let iframe_port;
+let content_port;
+
+function iframe_port_onmessage(event) {
+    console.debug("worker recieved message from iframe", event.data)
     let message = event.data;
     // console.log("worker", message)
     switch (message.type) {
@@ -42,23 +46,39 @@ onmessage = function (event) {
     }
 }
 
-let awaiting_url = {}
+function content_port_onmessage(event) {
+    console.debug("worker recieved message from content", event.data)
+}
 
-console.log("worker started");
+onmessage = event => {
+    if (event.data === "init") {
+        console.debug("worker recieved init message");
+        iframe_port = event.ports[0];
+        content_port = event.ports[1];
+        iframe_port.onmessage = iframe_port_onmessage
+        content_port.onmessage = content_port_onmessage;
+        main().catch(e => {
+            console.log("⚠️ FATAL ERROR", JSON.stringify(e, Object.getOwnPropertyNames(e)));
+            throw e
+        })
+    }
+};
+let awaiting_url = {}
 
 function chromeruntimeurl(path) {
     return new Promise((resolve, reject) => {
         awaiting_url[path] = resolve;
-        postMessage({type: "chromeruntimeurl", inurl: path});
+        iframe_port.postMessage({type: "chromeruntimeurl", inurl: path});
     })
 }
 
 
 // yt-dlp tries to set some headers browsers dont allow. this isnt an error but it clogs up the console. patch it out.
 const originalSetRequestHeader = XMLHttpRequest.prototype.setRequestHeader;
-const unsafeHeaders = ['sec-fetch-mode', 'origin', 'accept-encoding'];
+const unsafeHeaders = ['sec-fetch-mode', 'origin', 'accept-encoding', "referer"];
 XMLHttpRequest.prototype.setRequestHeader = function (name, value) {
     if (unsafeHeaders.includes(name.toLowerCase())) {
+        console.debug("[dlPro] blocked unsafe header", name, value);
         return;
     }
     return originalSetRequestHeader.call(this, name, value);
@@ -73,32 +93,32 @@ XMLHttpRequest.prototype.setRequestHeader = function (name, value) {
 // };
 
 // fix workers to always be classic, and trust urls for youtube
-(() => {
-    // Save the original Worker constructor
-    const NativeWorker = self.Worker;
-
-    // Create a drop-in replacement
-    function PatchedWorker(scriptURL, options = {}) {
-        // Always force classic mode
-        const opts = Object.assign({}, options, {type: 'classic'});
-        // worker urls need to be trusted i guess
-        if (trustedTypes && trustedTypes.createPolicy) {
-            const policy = trustedTypes.defaultPolicy || trustedTypes.createPolicy('ytdlpxtn', {
-                // Here we simply pass through—the blob URL is already trusted by you.
-                createScriptURL: url => url,
-            });
-            scriptURL = policy.createScriptURL(scriptURL);
-        }
-        return new NativeWorker(scriptURL, opts);
-    }
-
-    // Preserve prototype chain and static properties
-    PatchedWorker.prototype = NativeWorker.prototype;
-    Object.setPrototypeOf(PatchedWorker, NativeWorker);
-
-    // Replace the global Worker
-    self.Worker = PatchedWorker;
-})();
+// (() => {
+//     // Save the original Worker constructor
+//     const NativeWorker = self.Worker;
+//
+//     // Create a drop-in replacement
+//     function PatchedWorker(scriptURL, options = {}) {
+//         // Always force classic mode
+//         const opts = Object.assign({}, options, {type: 'classic'});
+//         // worker urls need to be trusted i guess
+//         if (trustedTypes && trustedTypes.createPolicy) {
+//             const policy = trustedTypes.defaultPolicy || trustedTypes.createPolicy('ytdlpxtn', {
+//                 // Here we simply pass through—the blob URL is already trusted by you.
+//                 createScriptURL: url => url,
+//             });
+//             scriptURL = policy.createScriptURL(scriptURL);
+//         }
+//         return new NativeWorker(scriptURL, opts);
+//     }
+//
+//     // Preserve prototype chain and static properties
+//     PatchedWorker.prototype = NativeWorker.prototype;
+//     Object.setPrototypeOf(PatchedWorker, NativeWorker);
+//
+//     // Replace the global Worker
+//     self.Worker = PatchedWorker;
+// })();
 
 // ffmpeg-bridge needs access to the pyodide filesystem, make it global
 let pyodide;
@@ -106,14 +126,13 @@ let pyodide;
 // thanks to https://github.com/warren-bank/crx-yt-dlp for a quick start
 async function main() {
     // console.log("loading js libs")
-    // importScripts(
-    //     await toBlobURL(await chromeruntimeurl("pyodide/pyodide.js"), "text/javascript"),
-    //     await toBlobURL(await chromeruntimeurl("ffmpeg/ffmpeg.js"), "text/javascript",
-    //         // stupid fucking webpack bug
-    //         "let document = {};"),
-    //     await toBlobURL(await chromeruntimeurl("ffmpeg-bridge.js"), "text/javascript"),
-    //     await toBlobURL(await chromeruntimeurl("worker_utils.js"), "text/javascript"),
-    // )
+    console.log("worker started");
+    importScripts(
+        await chromeruntimeurl("webpack_patch.js"),
+        await chromeruntimeurl("pyodide/pyodide.js"),
+        await chromeruntimeurl("ffmpeg/ffmpeg.js"),
+        await chromeruntimeurl("ffmpeg-bridge.js"),
+    )
     // console.log("js libs loaded");
     // load Pyodide and import required things
     console.log("Loading Pyodide");
@@ -123,7 +142,6 @@ async function main() {
     await pyodide.loadPackage(await chromeruntimeurl("pyodide/yt_dlp-2025.6.30-py3-none-any.whl"))
     await pyodide.loadPackage('pyodide_http')
     await pyodide.loadPackage("ssl");
-    console.log("sending cookies");
     pyodide.FS.mkdir("/dl")
     // wait to recieve cookies if we havent
     await new Promise((resolve, reject) => {
@@ -156,15 +174,10 @@ async function main() {
         pyodide.FS.unlink(filePath);
         // let blob = new Blob(contents);
         // let burl = URL.createObjectURL(blob);
-        postMessage({type: "result", name: file, contents: contents}, [contents.buffer]);
+        iframe_port.postMessage({type: "result", name: file, contents: contents}, [contents.buffer]);
     }
     console.log("sending files from worker to main page")
 
     console.log("worker finished");
     self.close()
 }
-
-main().catch(e => {
-    console.log("⚠️ FATAL ERROR", JSON.stringify(e, Object.getOwnPropertyNames(e)));
-    throw e
-})

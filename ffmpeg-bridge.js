@@ -5,6 +5,33 @@ if (typeof ffmpeg === "undefined") {
     var ffmpeg = null;
 }
 
+// fix workers to always be classic
+(() => {
+    // Save the original Worker constructor
+    const NativeWorker = self.Worker;
+
+    // Create a drop-in replacement
+    function PatchedWorker(scriptURL, options = {}) {
+        // Always force classic mode
+        const opts = Object.assign({}, options, {type: 'classic'});
+        // worker urls need to be trusted i guess
+        // if (trustedTypes && trustedTypes.createPolicy) {
+        //     const policy = trustedTypes.defaultPolicy || trustedTypes.createPolicy('ytdlpxtn', {
+        //         // Here we simply pass through—the blob URL is already trusted by you.
+        //         createScriptURL: url => url,
+        //     });
+        //     scriptURL = policy.createScriptURL(scriptURL);
+        // }
+        return new NativeWorker(scriptURL, opts);
+    }
+
+    // Preserve prototype chain and static properties
+    PatchedWorker.prototype = NativeWorker.prototype;
+    Object.setPrototypeOf(PatchedWorker, NativeWorker);
+
+    // Replace the global Worker
+    self.Worker = PatchedWorker;
+})();
 
 async function ffmpegbridge(mode, args) {
     try {
@@ -128,24 +155,13 @@ async function load() {
     // i dont think any reencoding is done anyways so its Fine
     ffmpeg = new FFmpegWASM.FFmpeg();
     // blob url thing bypasses extra strict CORS on workers
-    let scripts = [
-        "noimport_patch.js",
-        "ffmpeg/814.ffmpeg.js",
-        "ffmpeg/ffmpeg-core.js",
-    ]
-    let bufs = await Promise.all(scripts.map(async (script) => {
-        let f = await fetch(await chromeruntimeurl(script));
-        return await f.arrayBuffer();
-    }))
-    let blob = new Blob(bufs);
-    let burl = URL.createObjectURL(blob);
     await ffmpeg.load({
-        // coreURL: await toBlobURL(await chromeruntimeurl("ffmpeg/ffmpeg-core.js"), "text/javascript"),
-        wasmURL: await toBlobURL(await chromeruntimeurl("ffmpeg/ffmpeg-core.wasm"), 'application/wasm'),
-        // classWorkerURL: await toBlobURL(await chromeruntimeurl("ffmpeg/814.ffmpeg.js"), "text/javascript"),
-        coreURL: "",
+        coreURL: await chromeruntimeurl("ffmpeg/ffmpeg-core.js"),
+        wasmURL: await chromeruntimeurl("ffmpeg/ffmpeg-core.wasm"),
+        classWorkerURL: await chromeruntimeurl("ffmpeg/814.ffmpeg.js"),
+        // coreURL: "",
         // wasmURL: "",
-        classWorkerURL: burl
+        // classWorkerURL: burl
     });
     await ffmpeg.createDir("/dl")
     loaded = true;
