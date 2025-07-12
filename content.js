@@ -22,6 +22,7 @@ let pyodide;
 
 async function main(cookies) {
     // load Pyodide and import required things
+    console.log("Loading Pyodide");
     pyodide = await loadPyodide();
     await pyodide.loadPackage(chrome.runtime.getURL("pyodide/yt_dlp-2025.6.30-py3-none-any.whl"))
     await pyodide.loadPackage('pyodide_http')

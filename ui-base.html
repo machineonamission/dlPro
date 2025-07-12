@@ -1,0 +1,55 @@
+<!-- Floating Window Container -->
+<div id="dlpro-ui">
+    <!-- Your custom content goes here -->
+    <h1>dlPro</h1>
+    <p>Console</p>
+    <pre id="console"></pre>
+</div>
+
+<!-- Styles -->
+<style>
+    #dlpro-ui {
+        /*floating window*/
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        z-index: 9999;
+        /*size*/
+        max-width: 90vw;
+        max-height: 90vh;
+        overflow: auto;
+        /*box styling*/
+        background: rgba(0, 0, 0, 0.75);
+        padding: 1rem;
+        box-shadow: 0.5rem 0.5rem 0.5rem rgba(0, 0, 0, 0.5);
+        border-radius: 1rem;
+        backdrop-filter: blur(2rem);
+        /*contents styling*/
+        color: white;
+        font-family: sans-serif;
+    }
+
+    #console {
+        overflow: auto;
+        height: 50vh;
+        width: 50vw;
+        border: 0.25rem solid #fff;
+        border-radius: 0.5rem;
+        font-size: 1.2rem;
+        padding: 0.5rem;
+    }
+
+    p {
+        margin: 0;
+        font-size: 1.5rem;
+    }
+
+    h1 {
+        font-size: 4rem;
+        margin-top: 0;
+        margin-bottom: 0.25em;
+    }
+</style>
+
+

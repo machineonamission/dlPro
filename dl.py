@@ -43,7 +43,7 @@ filename = None
 with yt_dlp.YoutubeDL(ydl_opts) as ydl:
     print("extracting info")
     info_dict = ydl.extract_info(downloadURL, download=False)
-    print(info_dict)
+    # print(info_dict)
     if 'formats' in info_dict:
         print(f"Available formats for: {info_dict.get('title', 'Unknown Title')}")
         for format_entry in info_dict['formats']:
