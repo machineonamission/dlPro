@@ -1,46 +1,87 @@
 // thanks to https://github.com/warren-bank/crx-yt-dlp for a quick start
 
+let cookies;
+let cookiessent = false;
+
 // receive cookies from the background script
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     if (msg.type === 'INIT') {
-        main(msg.data);
+        cookies = msg.data;
+        sendcookies()
     }
 });
 
-// yt-dlp tries to set some headers browsers dont allow. this isnt an error but it clogs up the console. patch it out.
-const originalSetRequestHeader = XMLHttpRequest.prototype.setRequestHeader;
-const unsafeHeaders = ['sec-fetch-mode', 'origin', 'accept-encoding'];
-XMLHttpRequest.prototype.setRequestHeader = function(name, value) {
-    if (unsafeHeaders.includes(name.toLowerCase())) {
-        return;
+// send cookies when theyre ready
+function sendcookies() {
+    if (cookies && dlpro_worker && !cookiessent) {
+        dlpro_worker.postMessage({type: "cookies", cookies: cookies});
+        cookiessent = true;
     }
-    return originalSetRequestHeader.call(this, name, value);
+}
+
+// ripped from @ffmpeg/util, for some reason it wont import properly
+const toBlobURL = async (url, mimeType, monkeypatch) => {
+    const buf = await (await fetch(url)).arrayBuffer();
+    const blob = new Blob(monkeypatch ? [new TextEncoder().encode(monkeypatch), buf] : [buf], {type: mimeType});
+    let burl = URL.createObjectURL(blob);
+    return burl;
 };
 
-// ffmpeg-bridge needs access to the pyodide filesystem, make it global
-let pyodide;
+let dlpro_worker;
 
-async function main(cookies) {
-    // load Pyodide and import required things
-    console.log("Loading Pyodide");
-    pyodide = await loadPyodide();
-    await pyodide.loadPackage(chrome.runtime.getURL("pyodide/yt_dlp-2025.6.30-py3-none-any.whl"))
-    await pyodide.loadPackage('pyodide_http')
-    await pyodide.loadPackage("ssl");
-    pyodide.FS.mkdir("/dl")
+async function main() {
+    dlpro_worker = new Worker(await toBlobURL(chrome.runtime.getURL("worker.js"), "text/javascript",
+        classWorkerPatch
+        // we cant just import this function cause we need it to do any importing. fun
+        + "; const toBlobURL = " + toBlobURL.toString() + ";"));
+    dlpro_worker.onmessage = event => {
+        let message = event.data;
+        // console.log("content", message)
+        switch (message.type) {
+            case "chromeruntimeurl":
+                // this is a request for a file, send it
+                dlpro_worker.postMessage({
+                    type: "chromeruntimeurl",
+                    inurl: message.inurl,
+                    outurl: chrome.runtime.getURL(message.inurl),
+                });
+                break;
+            case "log":
+                // log to the console
+                uilog(message.data);
+                break;
+            case "result":
+                // create a button with an href
+                let button_area = shadow.querySelector("#buttons");
+                let a = document.createElement("a");
+                let button = document.createElement('button');
+                button.innerText = `Download ${message.name}`;
+                button.classList.add("download");
+                // put the file contents in a blob url
+                let burl = URL.createObjectURL(new Blob([message.contents], {"type": "application/octet-stream"}));
+                a.href = burl;
+                a.download = message.name;
+                a.appendChild(button);
+                // remove blob from memory after download
+                a.addEventListener("click", () => {
+                    setTimeout(() => {
+                        URL.revokeObjectURL(burl);
+                    }, 5000)
+                })
+                button_area.appendChild(a);
+                break
+        }
+    }
+    sendcookies()
+    dlpro_worker.postMessage({type: "dlurl", dlurl: window.location.href});
+}
 
-    // pass cookie file
-    pyodide.FS.writeFile('/cookies.txt', cookies);
-    // run the Python script to download the video
-    const result = await pyodide.runPythonAsync(`downloadURL = """${window.location.href}"""\n` + (await (await fetch(chrome.runtime.getURL("dl.py"))).text()));
+// top level scope isnt async
+main()
 
-    console.log(result)
-    // very temporary download code
-    const button = document.createElement('button');
-    button.textContent = 'Click Me';
-    document.body.appendChild(button);
-    button.onclick = async () => {
-        // Ask the user where to save the final file
+/*
+*
+*         // Ask the user where to save the final file
         const fileHandle = await window.showSaveFilePicker({
             suggestedName: result.split('/').pop(),
             types: [{
@@ -56,5 +97,4 @@ async function main(cookies) {
 // Write to the real file
         await writable.write(data);
         await writable.close();
-    }
-};
+        * */

@@ -3,7 +3,7 @@ chrome.action.onClicked.addListener(async (tab) => {
     // inject the code
     await chrome.scripting.executeScript({
         target: {tabId: tab.id},
-        files: ["ui.js", "pyodide/pyodide.js", "ffmpeg/ffmpeg.js", /*"ffmpeg/utils.js",*/ "ffmpeg-bridge.js", "content.js"],
+        files: ["ui.js", "worker_utils.js", "content.js"],
         injectImmediately: true,
         world: "ISOLATED"
     });

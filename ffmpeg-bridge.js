@@ -88,33 +88,26 @@ async function ffmpegbridge(args, files) {
     }
 }
 
-// patch import scripts to conform to weird CSP directives
-const classWorkerPatch = `
-const originalImportScripts = self.importScripts.bind(self);
-self.importScripts = (...urls) => {
-    if (trustedTypes && trustedTypes.createPolicy) {
-        const policy = trustedTypes.defaultPolicy || trustedTypes.createPolicy('ytdlpxtn', {
-            // Here we simply pass through—the blob URL is already trusted by you.
-            createScriptURL: url => url,
-        });
-        urls = urls.map(u => policy.createScriptURL(u));
-    }
-    originalImportScripts(...urls);
-};
-
-`
 
 async function load() {
     console.log("loading ffmpeg");
     // bug in ffmpeg.wasm, tries to load in module mode. we need to patch
     (() => {
         // Save the original Worker constructor
-        const NativeWorker = window.Worker;
+        const NativeWorker = self.Worker;
 
         // Create a drop-in replacement
         function PatchedWorker(scriptURL, options = {}) {
             // Always force classic mode
             const opts = Object.assign({}, options, {type: 'classic'});
+            // worker urls need to be trusted i guess
+            if (trustedTypes && trustedTypes.createPolicy) {
+                const policy = trustedTypes.defaultPolicy || trustedTypes.createPolicy('ytdlpxtn', {
+                    // Here we simply pass through—the blob URL is already trusted by you.
+                    createScriptURL: url => url,
+                });
+                scriptURL = policy.createScriptURL(scriptURL);
+            }
             return new NativeWorker(scriptURL, opts);
         }
 
@@ -123,7 +116,7 @@ async function load() {
         Object.setPrototypeOf(PatchedWorker, NativeWorker);
 
         // Replace the global Worker
-        window.Worker = PatchedWorker;
+        self.Worker = PatchedWorker;
     })();
     // load ffmpeg wasm
     // note: i tried multithreading mode and it didnt work, some weird csp error.
@@ -131,9 +124,9 @@ async function load() {
     ffmpeg = new FFmpegWASM.FFmpeg();
     // blob url thing bypasses extra strict CORS on workers
     await ffmpeg.load({
-        coreURL: await toBlobURL(chrome.runtime.getURL("ffmpeg/ffmpeg-core.js"), "text/javascript"),
-        wasmURL: await toBlobURL(chrome.runtime.getURL("ffmpeg/ffmpeg-core.wasm"), 'application/wasm'),
-        classWorkerURL: await toBlobURL(chrome.runtime.getURL("ffmpeg/814.ffmpeg.js"), "text/javascript", classWorkerPatch),
+        coreURL: await toBlobURL(await chromeruntimeurl("ffmpeg/ffmpeg-core.js"), "text/javascript"),
+        wasmURL: await toBlobURL(await chromeruntimeurl("ffmpeg/ffmpeg-core.wasm"), 'application/wasm'),
+        classWorkerURL: await toBlobURL(await chromeruntimeurl("ffmpeg/814.ffmpeg.js"), "text/javascript", classWorkerPatch),
     });
     await ffmpeg.createDir("/dl")
     loaded = true;
@@ -141,18 +134,4 @@ async function load() {
 }
 
 
-// ripped from @ffmpeg/util, for some reason it wont import properly
-const toBlobURL = async (url, mimeType, monkeypatch) => {
-    const buf = await (await fetch(url)).arrayBuffer();
-    const blob = new Blob(monkeypatch ? [new TextEncoder().encode(monkeypatch), buf] : [buf], {type: mimeType});
-    let burl = URL.createObjectURL(blob);
-    // my own addition
-    // if (trustedTypes && trustedTypes.createPolicy) {
-    //     const policy = trustedTypes.defaultPolicy || trustedTypes.createPolicy('default', {
-    //         // Here we simply pass through—the blob URL is already trusted by you.
-    //         createScriptURL: url => url,
-    //     });
-    //     burl = policy.createScriptURL(burl);
-    // }
-    return burl;
-};
+

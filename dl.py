@@ -31,7 +31,7 @@ def popen_run(cls, *args, **kwargs):
 yutils.Popen.run = classmethod(popen_run)
 
 ydl_opts = {
-    "outtmpl": "/dl/%(title)s [%(id)s].%(ext)s.",
+    "outtmpl": "/dl/%(title)s [%(id)s].%(ext)s",
     "format": "bestvideo+bestaudio/best",
     "cookiefile": "/cookies.txt"
 }

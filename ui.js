@@ -11,18 +11,7 @@ function uilog(message) {
     });
 }
 
-// patch console.log to output to the UI
-const originalConsoleLog = console.log;
-console.log = function (...args) {
-    originalConsoleLog.call(console, "[dlPro]", ...args);
-    html_console.innerHTML += args.map(arg => {
-        try {
-            return arg.toString()
-        } catch (e) {
-            return JSON.stringify(arg)
-        }
-    }).join(' ') + "\n";
-};
+
 
 // inject ui
 async function inject_ui() {
