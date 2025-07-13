@@ -64,9 +64,6 @@ let dlurl_promise;
 let dlpro_worker;
 let worker_port;
 
-async function send_cookies_and_dlurl() {
-
-}
 
 async function main() {
     dlpro_worker = new Worker("worker.js");

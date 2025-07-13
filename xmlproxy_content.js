@@ -6,7 +6,8 @@ function proxy_fetch(request) {
             params,
             body,
             headers,
-            timeout
+            timeout,
+            credentials
         } = request;
 
         // debugger
@@ -40,7 +41,7 @@ function proxy_fetch(request) {
             xhr.setRequestHeader(k, v);
         }
 
-        // xhr.withCredentials = true;
+        xhr.withCredentials = credentials;
         xhr.send(body);
 
     })

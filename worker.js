@@ -159,7 +159,7 @@ async function main() {
             cookie_promise = resolve;
         }
     })
-
+    // debugger
     // pass cookie file
     pyodide.FS.writeFile('/cookies.txt', cookies);
     // wait to recieve the download URL if we havent

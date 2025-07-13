@@ -1,9 +1,28 @@
 import asyncio
 import ssl
 import json
+import traceback
 
 # honestly no idea what this patch does
 ssl._create_default_https_context = ssl._create_unverified_context
+
+import urllib.request
+import http.cookiejar as cj
+
+current_jar = None
+current_cookies = None
+
+original_cookieprocessor = urllib.request.HTTPCookieProcessor
+
+
+class CookiePatch(original_cookieprocessor):
+    def __init__(self, cookiejar):
+        super().__init__(cookiejar)
+        global current_jar
+        current_jar = cookiejar
+
+
+urllib.request.HTTPCookieProcessor = CookiePatch
 
 # attach url open to web browser
 import pyodide_http
@@ -14,29 +33,55 @@ original_pyodidesend = pyodide_http._core.send
 from pyodide.ffi import run_sync, to_js
 from email.parser import Parser
 
+
+def chromeify_cookies(cookies: cj.CookieJar):
+    out = []
+    for cookie in cookies:
+        out.append({
+            "name": cookie.name,
+            "value": cookie.value,
+            "domain": cookie.domain,
+            "path": cookie.path,
+            "secure": cookie.secure,
+            "httpOnly": cookie.has_nonstandard_attr("HttpOnly"),
+            "sameSite": cookie.get_nonstandard_attr("SameSite", None),
+            "expirationDate": cookie.expires if cookie.expires != 0 else None,
+            "session": cookie.expires == 0,
+        })
+    return out
+
+
 def modified_pyodidesend(request, stream=False):
     # print(request)
     proxy = False
+    credentials = False
     # these headers cannot be modified directly, but they are needed, so requests are proxied through a content script
     proxy_headers = ["origin", "referer"]
     # the browser doesnt let you set these
-    blocked_headers = ['sec-fetch-mode', 'accept-encoding', "origin", "referer", "user-agent"]
-    # simultaneously block headers that arent allowed in the browser, and determine if we need to use the proxy
+    blocked_headers = ['sec-fetch-mode', 'accept-encoding', "origin", "referer", "user-agent", "cookie", "cookie2"]
+    # we cant directly set cookie headers, but we can ask the browser to include credentials if yt-dlp wishes to set them
+    credentials_headers = ["cookie", "cookie2"]
+    # handle headers
     new_headers = {}
     for header, value in request.headers.items():
+        # dont add headers that are not allowed
         if header.lower() in blocked_headers:
             # print("Blocked header:", header, value)
+            # signal we need to proxy this request
             if header.lower() in proxy_headers:
                 proxy = True
+            # signal we need to include credentials
+            if header.lower() in credentials_headers:
+                credentials = True
         else:
+            # print("Allowed header:", header, value)
             new_headers[header] = value
     request.headers = new_headers
-
+    from js import force_cookies, Object, set_credential_mode
     if proxy:
         if stream:
             raise Exception("Attempted to stream through proxy, which isnt supported.")
         from js import proxy_fetch
-        from js import Object
         # pyodide wont convert custom objects by default, so parse them out
         jsified_request = {
             "method": request.method,
@@ -45,32 +90,54 @@ def modified_pyodidesend(request, stream=False):
             "body": request.body,
             "headers": request.headers,
             "timeout": request.timeout,
+            "credentials": credentials,
         }
+        # TODO: im aware sometimes yt-dlp doesnt want the exact cookies the browser has,
+        #  but setting cookies is a hard and janky process
+        # print(current_cookies)
+        # oldcookies = run_sync(force_cookies(to_js(chromeify_cookies(current_cookies), dict_converter=Object.fromEntries)))
         # block until async js request is done
-        js_response = run_sync(proxy_fetch(to_js(jsified_request, dict_converter = Object.fromEntries)))
+        js_response = run_sync(proxy_fetch(to_js(jsified_request, dict_converter=Object.fromEntries)))
+
+        # run_sync(force_cookies(oldcookies))
         # idfk, ripped from pyodide
         headers = dict(Parser().parsestr(js_response["headers"]))
         # expected response object
         response = pyodide_http._core.Response(
-            status_code = js_response["status_code"],
-            headers = headers,
-            body = js_response["body"]
+            status_code=js_response["status_code"],
+            headers=headers,
+            body=js_response["body"]
         )
         return response
     else:
-        # if no proxy needed, just call original code.
-        return original_pyodidesend(request, stream)
+        # print(current_cookies)
+        # oldcookies = run_sync(force_cookies(chromeify_cookies(to_js(current_cookies, dict_converter=Object.fromEntries))))
+        set_credential_mode(credentials)
+        out = original_pyodidesend(request, stream)
+        # run_sync(force_cookies(oldcookies))
+        return out
 
 
 pyodide_http._core.send = modified_pyodidesend
 
-pyodide_http.patch_all()
+import pyodide_http._urllib
 
 # patch some weird pyodide http bug
 original_urlopen = pyodide_http._urllib.urlopen
 
 
 def modified_urlopen(url, *args, **kwargs):
+    # print("modified urlopen call")
+    if isinstance(url, urllib.request.Request):
+        # print("adding cookies")
+        # print(current_jar)
+        current_jar.add_cookie_header(url)
+        # global current_cookies
+        # try:
+        #     current_cookies = current_jar._cookies_for_request(url)
+        # except Exception as e:
+        #     print(e)
+        #     traceback.print_exc()
     response = original_urlopen(url, *args, **kwargs)
     if isinstance(url, pyodide_http._urllib.urllib.request.Request):
         response.url = url.full_url
@@ -80,6 +147,7 @@ def modified_urlopen(url, *args, **kwargs):
 
 
 pyodide_http._urllib.urlopen = modified_urlopen
+pyodide_http.patch_all()
 
 # patch yt-dlp to not call subprocesses, but to call ffmpeg.wasm
 import yt_dlp.utils._utils as yutils
