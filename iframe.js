@@ -54,7 +54,8 @@ window.addEventListener('message', event => {
         content_port.onmessage = content_port_onmessage;
         // top level scope isnt async
         main().catch(e => {
-            uilog(`⚠️ FATAL ERROR: ${JSON.stringify(e, Object.getOwnPropertyNames(e))}`);
+            console.error(e)
+            uilog(`⚠️ FATAL IFRAME ERROR\n${e.toString()}\n${e.stack}`);
             throw e
         })
     }

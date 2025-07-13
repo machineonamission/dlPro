@@ -7,7 +7,6 @@ async function ffmpegbridge(mode, args) {
         // yt-dlp, in youtube, checks ffmpeg version and merging capability. we dont need to actually launch ffmpeg for
         // this
         // just make sure to update then when ffmpeg is updated
-        args = JSON.parse(args)
         if (!loaded) {
             await load()
         }
@@ -99,10 +98,11 @@ async function ffmpegbridge(mode, args) {
         }
         console.log("ffmpeg command finished")
         // the format yt_dlp expects processes to return
-        return JSON.stringify([stdout, stderr, code]);
+        return [stdout, stderr, code];
     } catch (e) {
-        console.error(e)
-        console.log("⚠️ FATAL FFMPEG ERROR", JSON.stringify(e, Object.getOwnPropertyNames(e)));
+        debugger
+        console.error("[dlPro]", e)
+        console.log(`⚠️ FATAL FFMPEG ERROR\n${e.toString()}\n${e.stack}`);
         throw e;
     }
 }

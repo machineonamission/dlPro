@@ -65,7 +65,8 @@ onmessage = event => {
         iframe_port.onmessage = iframe_port_onmessage
         content_port.onmessage = content_port_onmessage;
         main().catch(e => {
-            console.log("⚠️ FATAL ERROR", JSON.stringify(e, Object.getOwnPropertyNames(e)));
+            console.error(e)
+            console.log(`⚠️ FATAL WORKER ERROR\n${e.toString()}\n${e.stack}`);
             throw e
         })
     }
@@ -78,6 +79,34 @@ function chromeruntimeurl(path) {
         iframe_port.postMessage({type: "chromeruntimeurl", inurl: path});
     })
 }
+
+let stdout_buf = [];
+let stderr_buf = [];
+
+// Create a reusable UTF-8 decoder
+const decoder = new TextDecoder('utf-8');
+
+const delimiters = [0x0a, 0x0d];
+
+function pythonouthandler(byte, mode) {
+    if (delimiters.includes(byte)) {
+        const chunk = new Uint8Array(mode === "stdout" ? stdout_buf : stderr_buf);
+        const text = decoder.decode(chunk);
+        console.log(`[pyodide] [${mode}] ${text}`);
+        if (mode === "stdout") {
+            stdout_buf = [];
+        } else {
+            stderr_buf = [];
+        }
+    } else {
+        if (mode === "stdout") {
+            stdout_buf.push(byte);
+        } else {
+            stderr_buf.push(byte);
+        }
+    }
+}
+
 
 // ffmpeg-bridge needs access to the pyodide filesystem, make it global
 let pyodide;
@@ -100,6 +129,9 @@ async function main() {
     pyodide = await loadPyodide({
         indexURL: await chromeruntimeurl("pyodide/")
     });
+    pyodide.setStdin({error: true});
+    pyodide.setStdout({raw: (byte) => pythonouthandler(byte, "stdout")});
+    pyodide.setStderr({raw: (byte) => pythonouthandler(byte, "stderr")});
     await pyodide.loadPackage(await chromeruntimeurl("pyodide/yt_dlp-2025.6.30-py3-none-any.whl"))
     // await pyodide.loadPackage('pyodide_http')
     await pyodide.loadPackage("ssl");
