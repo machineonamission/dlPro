@@ -79,54 +79,6 @@ function chromeruntimeurl(path) {
     })
 }
 
-
-// // yt-dlp tries to set some headers browsers dont allow. this isnt an error but it clogs up the console. patch it out.
-// const originalSetRequestHeader = XMLHttpRequest.prototype.setRequestHeader;
-// const unsafeHeaders = ['sec-fetch-mode', 'origin', 'accept-encoding', "referer"];
-// XMLHttpRequest.prototype.setRequestHeader = function (name, value) {
-//     if (unsafeHeaders.includes(name.toLowerCase())) {
-//         console.debug("[dlPro] blocked unsafe header", name, value);
-//         return;
-//     }
-//     return originalSetRequestHeader.call(this, name, value);
-// };
-
-// this code HAS to be duplicated, because you need it before you can import anything.....
-// const toBlobURL = async (url, mimeType, monkeypatch) => {
-//     const buf = await (await fetch(url)).arrayBuffer();
-//     const blob = new Blob(monkeypatch ? [new TextEncoder().encode(monkeypatch), buf] : [buf], {type: mimeType});
-//     let burl = URL.createObjectURL(blob);
-//     return burl;
-// };
-
-// fix workers to always be classic, and trust urls for youtube
-// (() => {
-//     // Save the original Worker constructor
-//     const NativeWorker = self.Worker;
-//
-//     // Create a drop-in replacement
-//     function PatchedWorker(scriptURL, options = {}) {
-//         // Always force classic mode
-//         const opts = Object.assign({}, options, {type: 'classic'});
-//         // worker urls need to be trusted i guess
-//         if (trustedTypes && trustedTypes.createPolicy) {
-//             const policy = trustedTypes.defaultPolicy || trustedTypes.createPolicy('ytdlpxtn', {
-//                 // Here we simply pass through—the blob URL is already trusted by you.
-//                 createScriptURL: url => url,
-//             });
-//             scriptURL = policy.createScriptURL(scriptURL);
-//         }
-//         return new NativeWorker(scriptURL, opts);
-//     }
-//
-//     // Preserve prototype chain and static properties
-//     PatchedWorker.prototype = NativeWorker.prototype;
-//     Object.setPrototypeOf(PatchedWorker, NativeWorker);
-//
-//     // Replace the global Worker
-//     self.Worker = PatchedWorker;
-// })();
-
 // ffmpeg-bridge needs access to the pyodide filesystem, make it global
 let pyodide;
 
@@ -139,6 +91,7 @@ async function main() {
         await chromeruntimeurl("pyodide/pyodide.js"),
         await chromeruntimeurl("ffmpeg/ffmpeg.js"),
         await chromeruntimeurl("ffmpeg-bridge.js"),
+        await chromeruntimeurl("classic_worker_patch.js"),
         await chromeruntimeurl("xmlproxy_worker.js"),
     )
     // console.log("js libs loaded");
@@ -148,8 +101,22 @@ async function main() {
         indexURL: await chromeruntimeurl("pyodide/")
     });
     await pyodide.loadPackage(await chromeruntimeurl("pyodide/yt_dlp-2025.6.30-py3-none-any.whl"))
-    await pyodide.loadPackage('pyodide_http')
+    // await pyodide.loadPackage('pyodide_http')
     await pyodide.loadPackage("ssl");
+    console.log("loading pyodide_http_fork")
+    pyodide.FS.mkdir("/modules")
+    pyodide.FS.mkdir("/modules/pyodide_http_fork")
+    // yes this is horrible, but theres no other way to import a directory in pyodide, and pyodide_http is so heavily
+    // modified by my fork that i need it to be in a separate directory so i can use submodules and not worry about
+    // building the thing
+    await Promise.all(
+        ["__init__.py", "_core.py", "_requests.py", "_streaming.py", "_urllib.py"].map(async (file) => {
+            let runtime = await chromeruntimeurl(`pyodide_http_fork/pyodide_http/${file}`);
+            let f = await (await fetch(runtime)).text();
+            pyodide.FS.writeFile(`/modules/pyodide_http_fork/${file}`, f);
+        })
+    )
+
     pyodide.FS.mkdir("/dl")
     // wait to recieve cookies if we havent
     await new Promise((resolve, reject) => {

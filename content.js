@@ -34,32 +34,32 @@ shadow.adoptedStyleSheets.push(sheet)
 // create iframe (this isnt just for aesthetics, it has its own CSP! yay workers!)
 const container = document.createElement("div");
 container.style.cssText = `
-        /*floating window*/
-        position: fixed;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        z-index: 9999;
-        /*size*/
-        width: 50vw;
-        height: 50vh;
-        overflow: hidden;
-        resize:both;
-        /*box styling*/
-        background: rgba(0, 0, 0, 0.75);
-        padding: 1rem;
-        box-shadow: 0.5rem 0.5rem 0.5rem rgba(0, 0, 0, 0.5);
-        border-radius: 1rem;
-        backdrop-filter: blur(2rem);
+    /*floating window*/
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 9999;
+    /*size*/
+    width: 50vw;
+    height: 50vh;
+    overflow: hidden;
+    resize:both;
+    /*box styling*/
+    background: rgba(0, 0, 0, 0.75);
+    padding: 1rem;
+    box-shadow: 0.5rem 0.5rem 0.5rem rgba(0, 0, 0, 0.5);
+    border-radius: 1rem;
+    backdrop-filter: blur(2rem);
 `;
 const iframe = document.createElement('iframe');
 iframe.style.cssText = `
-        width:100%;
-        height:100%;
-        background: transparent;
-        border: none;
-        /* yes this is stupid, but if i dont, chrome fucks with it. soooooo */
-        color-scheme: only light !important;
+    width:100%;
+    height:100%;
+    background: transparent;
+    border: none;
+    /* yes this is stupid, but if i dont, chrome fucks with it. soooooo */
+    color-scheme: only light !important;
 `;
 iframe.setAttribute('allowtransparency', "true")
 iframe.src = chrome.runtime.getURL("iframe.html");
