@@ -7,10 +7,69 @@ ssl._create_default_https_context = ssl._create_unverified_context
 
 # attach url open to web browser
 import pyodide_http
+import pyodide_http._core
+
+# patch calls that have to be proxied to be async, also block headers
+original_pyodidesend = pyodide_http._core.send
+from pyodide.ffi import run_sync, to_js
+from email.parser import Parser
+
+def modified_pyodidesend(request, stream=False):
+    # print(request)
+    proxy = False
+    # these headers cannot be modified directly, but they are needed, so requests are proxied through a content script
+    proxy_headers = ["origin", "referer"]
+    # the browser doesnt let you set these
+    blocked_headers = ['sec-fetch-mode', 'accept-encoding', "origin", "referer", "user-agent"]
+    # simultaneously block headers that arent allowed in the browser, and determine if we need to use the proxy
+    new_headers = {}
+    for header, value in request.headers.items():
+        if header.lower() in blocked_headers:
+            # print("Blocked header:", header, value)
+            if header.lower() in proxy_headers:
+                proxy = True
+        else:
+            new_headers[header] = value
+    request.headers = new_headers
+
+    if proxy:
+        if stream:
+            raise Exception("Attempted to stream through proxy, which isnt supported.")
+        from js import proxy_fetch
+        from js import Object
+        # pyodide wont convert custom objects by default, so parse them out
+        jsified_request = {
+            "method": request.method,
+            "url": request.url,
+            "params": request.params,
+            "body": request.body,
+            "headers": request.headers,
+            "timeout": request.timeout,
+        }
+        # block until async js request is done
+        js_response = run_sync(proxy_fetch(to_js(jsified_request, dict_converter = Object.fromEntries)))
+        # idfk, ripped from pyodide
+        headers = dict(Parser().parsestr(js_response["headers"]))
+        # expected response object
+        response = pyodide_http._core.Response(
+            status_code = js_response["status_code"],
+            headers = headers,
+            body = js_response["body"]
+        )
+        return response
+    else:
+        # if no proxy needed, just call original code.
+        return original_pyodidesend(request, stream)
+
+
+pyodide_http._core.send = modified_pyodidesend
+
 pyodide_http.patch_all()
 
 # patch some weird pyodide http bug
 original_urlopen = pyodide_http._urllib.urlopen
+
+
 def modified_urlopen(url, *args, **kwargs):
     response = original_urlopen(url, *args, **kwargs)
     if isinstance(url, pyodide_http._urllib.urllib.request.Request):
@@ -18,10 +77,14 @@ def modified_urlopen(url, *args, **kwargs):
     else:
         response.url = url
     return response
+
+
 pyodide_http._urllib.urlopen = modified_urlopen
 
 # patch yt-dlp to not call subprocesses, but to call ffmpeg.wasm
 import yt_dlp.utils._utils as yutils
+
+
 def popen_run(cls, *args, **kwargs):
     # we dont need to actually call ffmpeg to just get basic static info.
     if args[0] == ["ffmpeg", "-bsfs"] or args[0] == ["ffprobe", "-bsfs"]:
@@ -30,9 +93,11 @@ def popen_run(cls, *args, **kwargs):
         )
     if args[0][0] in ["ffmpeg", "ffprobe"]:
         from js import ffmpegbridge
-        return json.loads(asyncio.run(ffmpegbridge(args[0][0], json.dumps(args[0][1:]))))
+        return json.loads(run_sync(ffmpegbridge(args[0][0], json.dumps(args[0][1:]))))
     else:
         raise Exception(f"yt-dlp attempted to call {args}, which isnt supported.")
+
+
 yutils.Popen.run = classmethod(popen_run)
 
 ydl_opts = {

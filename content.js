@@ -55,8 +55,16 @@ iframe.addEventListener('load', () => {
     const worker_port = worker_channel.port1;
     // Use port1 in the host
     iframe_port.onmessage = e => console.debug('content recieved message from iframe:', e.data);
-    worker_port.onmessage = e => console.debug('content recieved message from worker:', e.data);
     iframe_port.postMessage({"type": "dlurl", "dlurl": location.href});
+    worker_port.onmessage = e => {
+        switch(e.data.type) {
+            case "request":
+                proxy_fetch(e.data.request).then(response => {
+                    worker_port.postMessage({"type": "response", "response": response});
+                })
+                break
+        }
+    };
 });
 
 host.appendChild(iframe);

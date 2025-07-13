@@ -3,7 +3,7 @@ chrome.action.onClicked.addListener(async (tab) => {
     // inject the code
     await chrome.scripting.executeScript({
         target: {tabId: tab.id},
-        files: ["content.js"],
+        files: ["xmlproxy_content.js", "content.js"],
         injectImmediately: true,
         world: "ISOLATED"
     });

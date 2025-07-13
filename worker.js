@@ -47,7 +47,14 @@ function iframe_port_onmessage(event) {
 }
 
 function content_port_onmessage(event) {
+    let message = event.data;
     console.debug("worker recieved message from content", event.data)
+    switch (message.type) {
+        case "response":
+            response_resolve(pyodide.toPy(message.response));
+            response_resolve = null;
+            break
+    }
 }
 
 onmessage = event => {
@@ -73,16 +80,16 @@ function chromeruntimeurl(path) {
 }
 
 
-// yt-dlp tries to set some headers browsers dont allow. this isnt an error but it clogs up the console. patch it out.
-const originalSetRequestHeader = XMLHttpRequest.prototype.setRequestHeader;
-const unsafeHeaders = ['sec-fetch-mode', 'origin', 'accept-encoding', "referer"];
-XMLHttpRequest.prototype.setRequestHeader = function (name, value) {
-    if (unsafeHeaders.includes(name.toLowerCase())) {
-        console.debug("[dlPro] blocked unsafe header", name, value);
-        return;
-    }
-    return originalSetRequestHeader.call(this, name, value);
-};
+// // yt-dlp tries to set some headers browsers dont allow. this isnt an error but it clogs up the console. patch it out.
+// const originalSetRequestHeader = XMLHttpRequest.prototype.setRequestHeader;
+// const unsafeHeaders = ['sec-fetch-mode', 'origin', 'accept-encoding', "referer"];
+// XMLHttpRequest.prototype.setRequestHeader = function (name, value) {
+//     if (unsafeHeaders.includes(name.toLowerCase())) {
+//         console.debug("[dlPro] blocked unsafe header", name, value);
+//         return;
+//     }
+//     return originalSetRequestHeader.call(this, name, value);
+// };
 
 // this code HAS to be duplicated, because you need it before you can import anything.....
 // const toBlobURL = async (url, mimeType, monkeypatch) => {
@@ -132,6 +139,7 @@ async function main() {
         await chromeruntimeurl("pyodide/pyodide.js"),
         await chromeruntimeurl("ffmpeg/ffmpeg.js"),
         await chromeruntimeurl("ffmpeg-bridge.js"),
+        await chromeruntimeurl("xmlproxy_worker.js"),
     )
     // console.log("js libs loaded");
     // load Pyodide and import required things
@@ -151,6 +159,7 @@ async function main() {
             cookie_promise = resolve;
         }
     })
+
     // pass cookie file
     pyodide.FS.writeFile('/cookies.txt', cookies);
     // wait to recieve the download URL if we havent
