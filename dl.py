@@ -6,57 +6,62 @@ import traceback
 # honestly no idea what this patch does
 ssl._create_default_https_context = ssl._create_unverified_context
 
+# patch http.client to handle IncompleteRead exceptions
+# import http.client
+# from http.client import IncompleteRead
+# _orig_read = http.client.HTTPResponse.read
+# def _safe_read(self, amt=None):
+#     try:
+#         return _orig_read(self, amt)
+#     except IncompleteRead as e:
+#         # Return whatever was read so far and suppress the exception
+#         return e.partial
+# http.client.HTTPResponse.read = _safe_read
+# patch cookie processor so we can know the cookies
 import urllib.request
 import http.cookiejar as cj
-
 current_jar = None
 current_cookies = None
-
 original_cookieprocessor = urllib.request.HTTPCookieProcessor
-
-
 class CookiePatch(original_cookieprocessor):
     def __init__(self, cookiejar):
         super().__init__(cookiejar)
         global current_jar
         current_jar = cookiejar
-
-
 urllib.request.HTTPCookieProcessor = CookiePatch
 
-# attach url open to web browser
+# patch calls that have to be proxied to be async, also block headers
+
+
+
+# def chromeify_cookies(cookies: cj.CookieJar):
+#     out = []
+#     for cookie in cookies:
+#         out.append({
+#             "name": cookie.name,
+#             "value": cookie.value,
+#             "domain": cookie.domain,
+#             "path": cookie.path,
+#             "secure": cookie.secure,
+#             "httpOnly": cookie.has_nonstandard_attr("HttpOnly"),
+#             "sameSite": cookie.get_nonstandard_attr("SameSite", None),
+#             "expirationDate": cookie.expires if cookie.expires != 0 else None,
+#             "session": cookie.expires == 0,
+#         })
+#     return out
+
+# patch send with multiple things
 import pyodide_http
 import pyodide_http._core
-
-# patch calls that have to be proxied to be async, also block headers
 original_pyodidesend = pyodide_http._core.send
 from pyodide.ffi import run_sync, to_js
 from email.parser import Parser
-
-
-def chromeify_cookies(cookies: cj.CookieJar):
-    out = []
-    for cookie in cookies:
-        out.append({
-            "name": cookie.name,
-            "value": cookie.value,
-            "domain": cookie.domain,
-            "path": cookie.path,
-            "secure": cookie.secure,
-            "httpOnly": cookie.has_nonstandard_attr("HttpOnly"),
-            "sameSite": cookie.get_nonstandard_attr("SameSite", None),
-            "expirationDate": cookie.expires if cookie.expires != 0 else None,
-            "session": cookie.expires == 0,
-        })
-    return out
-
-
 def modified_pyodidesend(request, stream=False):
     # print(request)
     proxy = False
     credentials = False
     # these headers cannot be modified directly, but they are needed, so requests are proxied through a content script
-    proxy_headers = ["origin", "referer"]
+    proxy_headers = ["origin"]
     # the browser doesnt let you set these
     blocked_headers = ['sec-fetch-mode', 'accept-encoding', "origin", "referer", "user-agent", "cookie", "cookie2"]
     # we cant directly set cookie headers, but we can ask the browser to include credentials if yt-dlp wishes to set them
@@ -113,19 +118,32 @@ def modified_pyodidesend(request, stream=False):
         # print(current_cookies)
         # oldcookies = run_sync(force_cookies(chromeify_cookies(to_js(current_cookies, dict_converter=Object.fromEntries))))
         set_credential_mode(credentials)
-        out = original_pyodidesend(request, stream)
+        # print("stream", stream)
+        # try:
+        #     nonlocal out
+        response = original_pyodidesend(request, stream)
+        # print(out.headers)
+        # print(out)
+        # except Exception as e:
+        #     print("Error in modified_pyodidesend:", e)
+        #     traceback.print_exc()
+        #     raise e
+        # print("pyodide send finished? like is it finishing?")
         # run_sync(force_cookies(oldcookies))
-        return out
-
-
+    """
+    Ok so, pyodide_http reconstructs a raw HTTP response from the body that XHR returns. Problem is, XHR handles 
+    things like gzip and chunking, so if we leave those headers, and send it to python's http, it freaks out trying
+    to decode nonsense. super simple fix, we just remove the transfer-encoding header, and it behaves like normal
+    bytes, and thats fine
+    """
+    if "transfer-encoding" in response.headers:
+        del response.headers["transfer-encoding"]
+    return response
 pyodide_http._core.send = modified_pyodidesend
 
+# patch some weird pyodide http bug, and listen for urlopen calls to get cookies
 import pyodide_http._urllib
-
-# patch some weird pyodide http bug
 original_urlopen = pyodide_http._urllib.urlopen
-
-
 def modified_urlopen(url, *args, **kwargs):
     # print("modified urlopen call")
     if isinstance(url, urllib.request.Request):
@@ -144,15 +162,11 @@ def modified_urlopen(url, *args, **kwargs):
     else:
         response.url = url
     return response
-
-
 pyodide_http._urllib.urlopen = modified_urlopen
 pyodide_http.patch_all()
 
 # patch yt-dlp to not call subprocesses, but to call ffmpeg.wasm
 import yt_dlp.utils._utils as yutils
-
-
 def popen_run(cls, *args, **kwargs):
     # we dont need to actually call ffmpeg to just get basic static info.
     if args[0] == ["ffmpeg", "-bsfs"] or args[0] == ["ffprobe", "-bsfs"]:
