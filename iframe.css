@@ -1,5 +1,5 @@
 #console {
-    flex: 1;           /* grow to fill available space */
+    flex: 1; /* grow to fill available space */
     overflow: auto;
     /*height: 50vh;*/
     /*width: 50vw;*/
@@ -39,7 +39,9 @@ body, html {
     color: white;
     font-family: sans-serif;
 }
+
 body {
     display: flex;
     flex-direction: column;
+    color-scheme: dark;
 }
