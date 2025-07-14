@@ -1,11 +1,11 @@
 {
   "$schema": "https://json.schemastore.org/chrome-manifest.json",
   "manifest_version": 3,
-  "name": "ytdlpxtn",
+  "name": "dlPro",
   "description": "",
   "version": "0.0.1",
   "action": {
-    "default_title": "dlPro"
+    "default_title": "dlPro: click to download current page"
   },
   "permissions": [
     "scripting",
