@@ -37,9 +37,9 @@ def popen_run(cls, *args, **kwargs):
 
 yutils.Popen.run = classmethod(popen_run)
 
+
 ydl_opts = {
     "outtmpl": "/dl/%(title)s [%(id)s].%(ext)s",
-    "format": "bestvideo+bestaudio/best",
     "cookiefile": "/cookies.txt"
 }
 
@@ -47,24 +47,12 @@ import yt_dlp.YoutubeDL
 
 filename = None
 
-with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-    print("extracting info")
-    info_dict = ydl.extract_info(downloadURL, download=False)
-    # print(info_dict)
-    if 'formats' in info_dict:
-        print(f"Available formats for: {info_dict.get('title', 'Unknown Title')}")
-        for format_entry in info_dict['formats']:
-            format_id = format_entry.get('format_id')
-            ext = format_entry.get('ext')
-            resolution = format_entry.get('resolution')
-            vcodec = format_entry.get('vcodec')
-            acodec = format_entry.get('acodec')
-            filesize = format_entry.get('filesize')
-            filesize_approx = format_entry.get('filesize_approx')
 
-            print(f"  ID: {format_id}, Ext: {ext}, Resolution: {resolution}, "
-                  f"VCodec: {vcodec}, ACodec: {acodec}, "
-                  f"Filesize: {filesize or filesize_approx} bytes")
-    # TODO: playlist support
-    print("processing info and downloading")
-    ydl.process_info(info_dict)
+with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+    info_dict = ydl.extract_info(downloadURL, download=False)
+    # we need to do this if we are modifying the format, or else we get 403s
+    info_dict = ydl.sanitize_info(info_dict, remove_private_keys=True)
+
+ydl_opts["format"] = "bestaudio"
+with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+    ydl.process_ie_result(info_dict)
