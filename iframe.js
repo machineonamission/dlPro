@@ -108,6 +108,15 @@ async function main() {
                 })
                 button_area.appendChild(a);
                 break
+            case "format":
+                // ask the user for a format
+                ask_user_for_format(message.info_dict).then(format => {
+                    worker_port.postMessage({
+                        type: "format",
+                        format: format
+                    });
+                });
+                break;
         }
     }
     await new Promise(resolve => {
@@ -135,4 +144,9 @@ function uilog(message) {
         left: 0,
         behavior: 'instant'
     });
+}
+
+async function ask_user_for_format(info_dict) {
+    // TODO: ui shit yummy
+    return "bestaudio"
 }

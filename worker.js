@@ -25,6 +25,18 @@ let dlurl_promise;
 let iframe_port;
 let content_port;
 
+let format_promise;
+
+function ask_user_for_format(info_dict) {
+    return new Promise((resolve, reject) => {
+        format_promise = resolve;
+        iframe_port.postMessage({
+            type: "format",
+            info_dict: info_dict
+        });
+    })
+}
+
 function iframe_port_onmessage(event) {
     console.debug("worker recieved message from iframe", event.data)
     let message = event.data;
@@ -45,6 +57,10 @@ function iframe_port_onmessage(event) {
         case "chromeruntimeurl":
             awaiting_url[message.inurl](message.outurl);
             break
+        case "format":
+            format_promise(message.format);
+            format_promise = null;
+            break;
     }
 }
 
