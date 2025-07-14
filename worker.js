@@ -122,7 +122,9 @@ async function main() {
         await chromeruntimeurl("ffmpeg-bridge.js"),
         await chromeruntimeurl("classic_worker_patch.js"),
         await chromeruntimeurl("xmlproxy_worker.js"),
+        await chromeruntimeurl("pyodide_streaming_worker_proxy.js"),
     )
+    console.log("sab", SharedArrayBuffer)
     // console.log("js libs loaded");
     // load Pyodide and import required things
     console.log("Loading Pyodide");
