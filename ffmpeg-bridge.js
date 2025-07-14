@@ -48,11 +48,11 @@ async function ffmpegbridge(mode, args) {
             switch (type) {
                 case "stdout":
                     stdout += message;
-                    console.log("[ffmpeg] [stdout]", message);
+                    console.log("[ffmpeg]", message);
                     break;
                 case "stderr":
                     stderr += message;
-                    console.log("[ffmepg] [stderr]", message);
+                    console.log("[ffmepg err]", message);
                     break;
                 default:
                     console.warn("unknown log type", type, message);
@@ -60,7 +60,7 @@ async function ffmpegbridge(mode, args) {
         }
         ffmpeg.on("log", logcallback)
         const progresscallback = ({progress, time}) => {
-            console.log("[ffmpeg] [progress]", progress, time);
+            console.log("[ffmpeg progress]", progress, time);
         }
         ffmpeg.on("progress", progresscallback)
 

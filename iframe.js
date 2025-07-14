@@ -1,5 +1,3 @@
-// thanks to https://github.com/warren-bank/crx-yt-dlp for a quick start
-
 // ripped from https://github.com/kairi003/Get-cookies.txt-LOCALLY/blob/master/src/modules/cookie_format.mjs
 // Converts cookies from Chrome's JSON format to Netscape format (which is what yt-dlp expects).
 function jsonToNetscapeMapper(cookies) {
@@ -128,24 +126,13 @@ async function main() {
     worker_port.postMessage({type: "cookies", cookies: sCookies});
 }
 
+let html_console = document.getElementById("console");
 
-
-/*
-*
-*         // Ask the user where to save the final file
-        const fileHandle = await window.showSaveFilePicker({
-            suggestedName: result.split('/').pop(),
-            types: [{
-                description: 'MP4 Video',
-                accept: {'video/mp4': ['.mp4']}
-            }]
-        });
-
-        const writable = await fileHandle.createWritable();
-
-        // Read the file from the virtual FS
-        const data = pyodide.FS.readFile(result, {encoding: 'binary'});
-// Write to the real file
-        await writable.write(data);
-        await writable.close();
-        * */
+function uilog(message) {
+    html_console.textContent += message;
+    html_console.scrollTo({
+        top: html_console.scrollHeight,
+        left: 0,
+        behavior: 'instant'
+    });
+}

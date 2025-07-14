@@ -1,22 +1,3 @@
-let cookies;
-let cookiessent = false;
-
-// receive cookies from the background script
-chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
-    if (msg.type === 'INIT') {
-        cookies = msg.data;
-        sendcookies()
-    }
-});
-
-// send cookies when theyre ready
-function sendcookies() {
-    if (cookies && dlpro_worker && !cookiessent) {
-        dlpro_worker.postMessage({type: "cookies", cookies: cookies});
-        cookiessent = true;
-    }
-}
-
 const host = document.createElement('div');
 document.body.appendChild(host);
 let shadow = host.attachShadow({mode: 'open'});
@@ -41,8 +22,8 @@ container.style.cssText = `
     transform: translate(-50%, -50%);
     z-index: 9999;
     /*size*/
-    width: 50vw;
-    height: 50vh;
+    width: 75vw;
+    height: 75vh;
     overflow: hidden;
     resize:both;
     /*box styling*/

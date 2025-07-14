@@ -1,3 +1,5 @@
+// thanks to https://github.com/warren-bank/crx-yt-dlp for a quick start
+
 // patch console.log to output to the UI
 const originalConsoleLog = console.log;
 console.log = function (...args) {
@@ -92,7 +94,7 @@ function pythonouthandler(byte, mode) {
     if (delimiters.includes(byte)) {
         const chunk = new Uint8Array(mode === "stdout" ? stdout_buf : stderr_buf);
         const text = decoder.decode(chunk);
-        console.log(`[pyodide] [${mode}] ${text}`);
+        console.log(`[pyodide${mode === "stdout" ? "" : " err"}] ${text}`);
         if (mode === "stdout") {
             stdout_buf = [];
         } else {
@@ -124,7 +126,7 @@ async function main() {
         await chromeruntimeurl("xmlproxy_worker.js"),
         await chromeruntimeurl("pyodide_streaming_worker_proxy.js"),
     )
-    console.log("sab", SharedArrayBuffer)
+    // console.log("sab", SharedArrayBuffer)
     // console.log("js libs loaded");
     // load Pyodide and import required things
     console.log("Loading Pyodide");
