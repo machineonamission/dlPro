@@ -138,7 +138,28 @@ function uilog(message) {
     });
 }
 
-document.documentElement.setAttribute('data-bs-theme', (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'))
+
+const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+
+function handleThemeChange(e) {
+    if (e.matches) {
+        // User prefers dark mode
+        console.log('Dark mode enabled');
+        // Implement your dark mode logic here (e.g., changing icon, applying styles)
+    } else {
+        // User prefers light mode
+        console.log('Light mode enabled');
+        // Implement your light mode logic here
+    }
+}
+
+const logo = document.getElementById("logo");
+
+function handleThemeChange(dark) {
+    const themename = dark ? 'dark' : 'light';
+    document.documentElement.setAttribute('data-bs-theme', themename);
+    logo.setAttribute("src", `/logo/${themename}/logo.svg`)
+}
 
 const presets = {
     "Best": {},

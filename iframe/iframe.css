@@ -38,3 +38,11 @@ body {
         border-color: #fff;
     }
 }
+
+.icon {
+    display: inline-block;
+    height: 1em;
+    vertical-align: middle;
+    position: relative;
+    margin-top: -7px;
+}
