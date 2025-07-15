@@ -16,12 +16,12 @@ shadow.adoptedStyleSheets.push(sheet)
 const container = document.createElement("div");
 const iframe = document.createElement('iframe');
 const style = new CSSStyleSheet();
-fetch(chrome.runtime.getURL("content.css"))
+fetch(chrome.runtime.getURL("content/content.css"))
     .then(response => response.text())
     .then(css => style.replace(css))
     .then(css => shadow.adoptedStyleSheets.push(css))
 iframe.setAttribute('allowtransparency', "true")
-iframe.src = chrome.runtime.getURL("iframe.html");
+iframe.src = chrome.runtime.getURL("iframe/iframe.html");
 iframe.addEventListener('load', () => {
     const iframe_channel = new MessageChannel();
     const worker_channel = new MessageChannel();

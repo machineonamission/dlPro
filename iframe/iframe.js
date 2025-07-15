@@ -65,7 +65,7 @@ let worker_port;
 
 
 async function main() {
-    dlpro_worker = new Worker("worker.js");
+    dlpro_worker = new Worker("../worker/worker.js");
     // init 2 way channel
     const worker_channel = new MessageChannel();
     worker_port = worker_channel.port1;
@@ -76,14 +76,6 @@ async function main() {
         let message = event.data;
         // console.log("content", message)
         switch (message.type) {
-            case "chromeruntimeurl":
-                // this is a request for a file, send it
-                worker_port.postMessage({
-                    type: "chromeruntimeurl",
-                    inurl: message.inurl,
-                    outurl: chrome.runtime.getURL(message.inurl),
-                });
-                break;
             case "log":
                 // log to the console
                 uilog(message.data);

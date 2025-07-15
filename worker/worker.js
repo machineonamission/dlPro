@@ -54,9 +54,6 @@ function iframe_port_onmessage(event) {
                 dlurl_promise(dlurl);
             }
             break;
-        case "chromeruntimeurl":
-            awaiting_url[message.inurl](message.outurl);
-            break
         case "format":
             format_promise(message.format);
             format_promise = null;
@@ -89,14 +86,6 @@ onmessage = event => {
         })
     }
 };
-let awaiting_url = {}
-
-function chromeruntimeurl(path) {
-    return new Promise((resolve, reject) => {
-        awaiting_url[path] = resolve;
-        iframe_port.postMessage({type: "chromeruntimeurl", inurl: path});
-    })
-}
 
 let stdout_buf = [];
 let stderr_buf = [];
@@ -134,25 +123,25 @@ async function main() {
     // console.log("loading js libs")
     console.log("worker started");
     importScripts(
-        await chromeruntimeurl("webpack_patch.js"),
-        await chromeruntimeurl("pyodide/pyodide.js"),
-        await chromeruntimeurl("ffmpeg/ffmpeg.js"),
-        await chromeruntimeurl("ffmpeg-bridge.js"),
-        await chromeruntimeurl("classic_worker_patch.js"),
-        await chromeruntimeurl("xmlproxy_worker.js"),
-        await chromeruntimeurl("pyodide_streaming_worker_proxy.js"),
+        "/worker/webpack_patch.js",
+        "/libs/pyodide/pyodide.js",
+        "/libs/ffmpeg/ffmpeg.js",
+        "/worker/ffmpeg-bridge.js",
+        "/worker/classic_worker_patch.js",
+        "/worker/xmlproxy_worker.js",
+        "/worker/pyodide_streaming_worker_proxy.js",
     )
     // console.log("sab", SharedArrayBuffer)
     // console.log("js libs loaded");
     // load Pyodide and import required things
     console.log("Loading Pyodide");
     pyodide = await loadPyodide({
-        indexURL: await chromeruntimeurl("pyodide/")
+        indexURL: "/libs/pyodide/"
     });
     pyodide.setStdin({error: true});
     pyodide.setStdout({raw: (byte) => pythonouthandler(byte, "stdout")});
     pyodide.setStderr({raw: (byte) => pythonouthandler(byte, "stderr")});
-    await pyodide.loadPackage(await chromeruntimeurl("pyodide/yt_dlp-2025.6.30-py3-none-any.whl"))
+    await pyodide.loadPackage("/libs/pyodide/yt_dlp-2025.6.30-py3-none-any.whl")
     // await pyodide.loadPackage('pyodide_http')
     await pyodide.loadPackage("ssl");
     console.log("loading pyodide_http_fork")
@@ -163,7 +152,7 @@ async function main() {
     // building the thing
     await Promise.all(
         ["__init__.py", "_core.py", "_requests.py", "_streaming.py", "_urllib.py"].map(async (file) => {
-            let runtime = await chromeruntimeurl(`pyodide_http_fork/pyodide_http/${file}`);
+            let runtime = `/libs/pyodide_http_fork/pyodide_http/${file}`;
             let f = await (await fetch(runtime)).text();
             pyodide.FS.writeFile(`/modules/pyodide_http_fork/${file}`, f);
         })
@@ -191,7 +180,7 @@ async function main() {
     })
     console.log("running yt-dlp")
     // run the Python script to download the video
-    await pyodide.runPythonAsync(`downloadURL = """${dlurl}"""\n` + (await (await fetch(await chromeruntimeurl("dl.py"))).text()));
+    await pyodide.runPythonAsync(`downloadURL = """${dlurl}"""\n` + (await (await fetch("/worker/dl.py")).text()));
     console.log("yt-dlp finished");
     let outfiles = [];
     for (const file of pyodide.FS.readdir("/dl")) {

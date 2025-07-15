@@ -125,9 +125,9 @@ async function load() {
     ffmpeg = new FFmpegWASM.FFmpeg();
     // blob url thing bypasses extra strict CORS on workers
     await ffmpeg.load({
-        coreURL: await chromeruntimeurl("ffmpeg/ffmpeg-core.js"),
-        wasmURL: await chromeruntimeurl("ffmpeg/ffmpeg-core.wasm"),
-        classWorkerURL: await chromeruntimeurl("ffmpeg/814.ffmpeg.js"),
+        coreURL: "/libs/ffmpeg/ffmpeg-core.js",
+        wasmURL: "/libs/ffmpeg/ffmpeg-core.wasm",
+        classWorkerURL: "/libs/ffmpeg/814.ffmpeg.js",
         // coreURL: "",
         // wasmURL: "",
         // classWorkerURL: burl

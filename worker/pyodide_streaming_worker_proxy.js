@@ -1,7 +1,7 @@
 let streaming_worker;
 
 async function spawn_worker() {
-    streaming_worker = new Worker(await chromeruntimeurl("pyodide_http_fork/pyodide_http/streaming_worker_code.js"));
+    streaming_worker = new Worker("/libs/pyodide_http_fork/pyodide_http/streaming_worker_code.js");
     await new Promise(resolve => {
         streaming_worker.onmessage = resolve
     });

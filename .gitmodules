@@ -1,3 +1,6 @@
 [submodule "pyodide_http_fork"]
 	path = pyodide_http_fork
 	url = https://github.com/machineonamission/pyodide-http-dlpro
+[submodule "libs/pyodide_http_fork"]
+	path = libs/pyodide_http_fork
+	url = https://github.com/machineonamission/pyodide-http-dlpro
