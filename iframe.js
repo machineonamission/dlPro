@@ -146,6 +146,8 @@ function uilog(message) {
     });
 }
 
+document.documentElement.setAttribute('data-bs-theme', (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'))
+
 const presets = {
     "Best": {},
     "Best, prefer MP4": {
