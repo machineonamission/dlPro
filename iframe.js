@@ -146,7 +146,53 @@ function uilog(message) {
     });
 }
 
+const presets = {
+    "Best": {},
+    "Best, prefer MP4": {
+        "format_sort": ["ext"]
+    },
+    "Audio": {
+        "format": "bestaudio"
+    },
+    "Audio, prefer M4A/MP3": {
+        "format": "bestaudio",
+        "format_sort": ["ext"]
+    },
+    "Smallest": {
+        "format_sort": ["+size", "+br"]
+    },
+    "Smallest, prefer MP4": {
+        "format_sort": ["ext", "+size", "+br"]
+    },
+};
+
 async function ask_user_for_format(info_dict) {
-    // TODO: ui shit yummy
-    return "bestaudio"
+    if (info_dict.formats.length === 1) {
+        return presets["Best"];
+    }
+    let container = document.getElementById("format_select_container")
+    let preset_names = Object.keys(presets);
+    preset_names.push("Manually choose format")
+    container.innerHTML =
+        `<label for="format_select">Select a format preset:</label>
+
+    <select name="format" id="format_select">
+      ${preset_names.map(key =>
+            `<option value="${key}">${key}</option>`
+        ).join("\n")}
+    </select>
+    <button id="format_download" class="download">Download</button>
+    `
+    let select = document.getElementById("format_select");
+    let download_button = document.getElementById("format_download");
+    await new Promise(resolve => {
+        download_button.addEventListener("click", resolve)
+    })
+    let selected = select.value;
+    if (selected === "Manually choose format") {
+
+    } else {
+        return presets[selected];
+    }
+
 }

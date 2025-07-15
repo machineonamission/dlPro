@@ -52,6 +52,9 @@ with yt_dlp.YoutubeDL(ydl_opts) as ydl:
     # we need to do this if we are modifying the format, or else we get 403s
     info_dict = ydl.sanitize_info(info_dict, remove_private_keys=True)
 
-ydl_opts["format"] = run_sync(ask_user_for_format(to_js(info_dict, dict_converter=Object.fromEntries)))
+user_opts = run_sync(ask_user_for_format(to_js(info_dict, dict_converter=Object.fromEntries))).to_py()
+print(user_opts)
+ydl_opts |= user_opts
+
 with yt_dlp.YoutubeDL(ydl_opts) as ydl:
     ydl.process_ie_result(info_dict)
