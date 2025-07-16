@@ -53,6 +53,7 @@ with yt_dlp.YoutubeDL(ydl_opts) as ydl:
     info_dict = ydl.extract_info(downloadURL, download=False)
     # we need to do this if we are modifying the format, or else we get 403s
     info_dict_sanitized = ydl.sanitize_info(info_dict)
+    print(ydl.render_formats_table(info_dict))
 
 # delete our "all" key and let the user select
 del ydl_opts["format"]

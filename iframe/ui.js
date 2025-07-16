@@ -21,6 +21,7 @@ const presets = {
 
 let format_selection;
 let manual = false;
+let advanced = false;
 let format_promise;
 
 async function ask_user_for_format(info_dict) {
@@ -236,11 +237,16 @@ async function manual_select(info_dict) {
     }
 }
 
+async function advanced_select(info_dict) {
+
+}
+
 let ui = document.getElementById("ui");
 
 async function show_format_selection() {
     let preset_names = Object.keys(presets);
     preset_names.push("Manual")
+    preset_names.push("Advanced")
     const preset_ui = `
     <h2><label for="preset-select">Select download preset:</label></h2>
     <select class="form-select" id="preset-select">
@@ -265,7 +271,10 @@ async function show_format_selection() {
         let compat_val = compat.checked;
         if (val === "Manual") {
             manual = true;
-            ui.innerHTML = "<p>Waiting for formats...</p>";
+            ui.innerHTML = "<p>Waiting for format list...</p>";
+        } else if (val === "Advanced") {
+            advanced = true;
+            throw new Error("Advanced format selection is not implemented yet.");
         } else {
             format_selection = presets[val]
             if (compat_val) {
