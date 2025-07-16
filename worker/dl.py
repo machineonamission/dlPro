@@ -39,22 +39,29 @@ yutils.Popen.run = classmethod(popen_run)
 
 ydl_opts = {
     "outtmpl": "/dl/%(title)s [%(id)s].%(ext)s",
-    "cookiefile": "/cookies.txt"
+    "cookiefile": "/cookies.txt",
+    # you need this or else yt-dlp leaves out info from the info_dict, which breaks changing formats
+    "format": "all"
 }
 
 import yt_dlp.YoutubeDL
 
 filename = None
 
-
+# get info
 with yt_dlp.YoutubeDL(ydl_opts) as ydl:
     info_dict = ydl.extract_info(downloadURL, download=False)
     # we need to do this if we are modifying the format, or else we get 403s
-    info_dict = ydl.sanitize_info(info_dict, remove_private_keys=True)
+    info_dict_sanitized = ydl.sanitize_info(info_dict)
 
-user_opts = run_sync(ask_user_for_format(to_js(info_dict, dict_converter=Object.fromEntries))).to_py()
-print(user_opts)
+# delete our "all" key and let the user select
+del ydl_opts["format"]
+
+# user selections resolve as modifications to the options for simplicity
+#  eg, selecting "audio" preset adds "format:audio" to the options
+user_opts = run_sync(ask_user_for_format(to_js(info_dict_sanitized, dict_converter=Object.fromEntries))).to_py()
 ydl_opts |= user_opts
 
+# now that we have the user's selection, we can download, using the existing info
 with yt_dlp.YoutubeDL(ydl_opts) as ydl:
     ydl.process_ie_result(info_dict)

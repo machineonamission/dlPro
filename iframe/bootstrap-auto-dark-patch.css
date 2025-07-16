@@ -1,3 +1,4 @@
+/*apply styles from the bs-theme automatically if user wants dark mode*/
 @media (prefers-color-scheme: dark) {
     :root {
         --bs-carousel-indicator-active-bg: #000;

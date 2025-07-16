@@ -56,3 +56,7 @@ body {
     position: relative;
     margin-top: -7px;
 }
+
+.d-grid p, .d-grid h2 {
+    margin: 0;
+}
