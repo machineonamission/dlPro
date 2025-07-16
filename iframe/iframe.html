@@ -6,14 +6,15 @@
     <meta name="darkreader-lock">
     <link rel="stylesheet" href="iframe.css">
     <link rel="stylesheet" href="../libs/bootstrap.min.css">
+    <link rel="stylesheet" href="bootstrap-auto-dark-patch.css">
 </head>
 <body>
-<h1><img src="/logo/light/logo.svg" id="logo" alt=""/> dlPro</h1>
-<div id="ui"></div>
+<h1><img src="../logo/light/logo.svg" alt="" class="icon light"/><img src="../logo/dark/logo.svg" alt="" class="icon dark"/> dlPro</h1>
+<div id="ui" class="d-grid gap-2"></div>
 <h2>Console</h2>
 <pre id="console"></pre>
 <!--document on ready can eat my ass, i love this hack-->
 <script src="iframe.js"></script>
-<script src="/theme_handler.js"></script>
+<script src="ui.js"></script>
 </body>
 </html>

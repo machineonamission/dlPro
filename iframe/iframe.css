@@ -37,6 +37,16 @@ body {
     #console {
         border-color: #fff;
     }
+
+    .light {
+        display: none !important
+    }
+}
+
+@media not (prefers-color-scheme: dark) {
+    .dark {
+        display: none !important;
+    }
 }
 
 .icon {

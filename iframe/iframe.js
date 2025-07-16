@@ -1,3 +1,16 @@
+// patch console.log to output to the UI
+const originalConsoleLog = console.log;
+console.log = function (...args) {
+    originalConsoleLog.call(console, "[dlPro]", ...args);
+    uilog(args.map(arg => {
+        try {
+            return arg.toString()
+        } catch (e) {
+            return JSON.stringify(arg)
+        }
+    }).join(' ') + "\n")
+};
+
 // ripped from https://github.com/kairi003/Get-cookies.txt-LOCALLY/blob/master/src/modules/cookie_format.mjs
 // Converts cookies from Chrome's JSON format to Netscape format (which is what yt-dlp expects).
 function jsonToNetscapeMapper(cookies) {
@@ -53,7 +66,7 @@ window.addEventListener('message', event => {
         // top level scope isnt async
         main().catch(e => {
             console.error(e)
-            uilog(`⚠️ FATAL IFRAME ERROR\n${e.toString()}\n${e.stack}`);
+            console.log(`⚠️ FATAL IFRAME ERROR\n${e.toString()}\n${e.stack}`);
             throw e
         })
     }
@@ -63,6 +76,21 @@ let dlurl_promise;
 let dlpro_worker;
 let worker_port;
 
+function save_data(data, fileName) {
+    console.log("Moving", fileName, "from iframe to user");
+    let a = document.createElement("a");
+    document.body.appendChild(a);
+    a.style.cssText = "display: none";
+    let blob = new Blob([data], {type: "application/octet-stream"});
+    let url = window.URL.createObjectURL(blob);
+    a.href = url;
+    a.download = fileName;
+    a.click();
+    setTimeout(() => {
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+    }, 0)
+}
 
 async function main() {
     dlpro_worker = new Worker("../worker/worker.js");
@@ -81,24 +109,7 @@ async function main() {
                 uilog(message.data);
                 break;
             case "result":
-                // create a button with an href
-                let button_area = document.getElementById("buttons");
-                let a = document.createElement("a");
-                let button = document.createElement('button');
-                button.innerText = `Download ${message.name}`;
-                button.classList.add("download");
-                // put the file contents in a blob url
-                let burl = URL.createObjectURL(new Blob([message.contents], {"type": "application/octet-stream"}));
-                a.href = burl;
-                a.download = message.name;
-                a.appendChild(button);
-                // remove blob from memory after download
-                a.addEventListener("click", () => {
-                    setTimeout(() => {
-                        URL.revokeObjectURL(burl);
-                    }, 5000)
-                })
-                button_area.appendChild(a);
+                save_data(message.contents, message.name);
                 break
             case "format":
                 // ask the user for a format
@@ -125,89 +136,4 @@ async function main() {
     const sCookies = netscapeSerializer(cookies);
     // send cookies
     worker_port.postMessage({type: "cookies", cookies: sCookies});
-}
-
-let html_console = document.getElementById("console");
-
-function uilog(message) {
-    html_console.textContent += message;
-    html_console.scrollTo({
-        top: html_console.scrollHeight,
-        left: 0,
-        behavior: 'instant'
-    });
-}
-
-
-const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-
-function handleThemeChange(e) {
-    if (e.matches) {
-        // User prefers dark mode
-        console.log('Dark mode enabled');
-        // Implement your dark mode logic here (e.g., changing icon, applying styles)
-    } else {
-        // User prefers light mode
-        console.log('Light mode enabled');
-        // Implement your light mode logic here
-    }
-}
-
-const logo = document.getElementById("logo");
-
-function handleThemeChange(dark) {
-    const themename = dark ? 'dark' : 'light';
-    document.documentElement.setAttribute('data-bs-theme', themename);
-    logo.setAttribute("src", `/logo/${themename}/logo.svg`)
-}
-
-const presets = {
-    "Best": {},
-    "Best, prefer MP4": {
-        "format_sort": ["ext"]
-    },
-    "Audio": {
-        "format": "bestaudio"
-    },
-    "Audio, prefer M4A/MP3": {
-        "format": "bestaudio",
-        "format_sort": ["ext"]
-    },
-    "Smallest": {
-        "format_sort": ["+size", "+br"]
-    },
-    "Smallest, prefer MP4": {
-        "format_sort": ["ext", "+size", "+br"]
-    },
-};
-
-async function ask_user_for_format(info_dict) {
-    if (info_dict.formats.length === 1) {
-        return presets["Best"];
-    }
-    let container = document.getElementById("format_select_container")
-    let preset_names = Object.keys(presets);
-    preset_names.push("Manually choose format")
-    container.innerHTML =
-        `<label for="format_select">Select a format preset:</label>
-
-    <select name="format" id="format_select">
-      ${preset_names.map(key =>
-            `<option value="${key}">${key}</option>`
-        ).join("\n")}
-    </select>
-    <button id="format_download" class="download">Download</button>
-    `
-    let select = document.getElementById("format_select");
-    let download_button = document.getElementById("format_download");
-    await new Promise(resolve => {
-        download_button.addEventListener("click", resolve)
-    })
-    let selected = select.value;
-    if (selected === "Manually choose format") {
-
-    } else {
-        return presets[selected];
-    }
-
 }

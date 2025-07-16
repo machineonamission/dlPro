@@ -33,10 +33,10 @@
     "service_worker": "background.js"
   },
   "icons": {
-    "16": "logo/light/logo-16.png",
-    "32":  "logo/light/logo-32.png",
-    "48":  "logo/light/logo-48.png",
-    "64":  "logo/light/logo-64.png",
-    "128":  "logo/light/logo-128.png"
+    "16": "logo/shadow/logo-16.png",
+    "32":  "logo/shadow/logo-32.png",
+    "48":  "logo/shadow/logo-48.png",
+    "64":  "logo/shadow/logo-64.png",
+    "128":  "logo/shadow/logo-128.png"
   }
 }

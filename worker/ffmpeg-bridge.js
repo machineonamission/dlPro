@@ -125,12 +125,11 @@ async function load() {
     ffmpeg = new FFmpegWASM.FFmpeg();
     // blob url thing bypasses extra strict CORS on workers
     await ffmpeg.load({
-        coreURL: "/libs/ffmpeg/ffmpeg-core.js",
-        wasmURL: "/libs/ffmpeg/ffmpeg-core.wasm",
-        classWorkerURL: "/libs/ffmpeg/814.ffmpeg.js",
-        // coreURL: "",
-        // wasmURL: "",
-        // classWorkerURL: burl
+        // ffmpeg wasm does weird url resolution, this is the easiest hack to fix it without calling
+        //  chrome.runtime.getURL, which isnt a thing in workers
+        coreURL: new URL("/libs/ffmpeg/ffmpeg-core.js", self.location.href).toString(),
+        wasmURL: new URL("/libs/ffmpeg/ffmpeg-core.wasm", self.location.href).toString(),
+        classWorkerURL: new URL("/libs/ffmpeg/814.ffmpeg.js", self.location.href).toString(),
     });
     await ffmpeg.createDir("/dl")
     loaded = true;
