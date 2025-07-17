@@ -12,7 +12,7 @@ pyodide_http.patch_all()
 
 from pyodide.ffi import run_sync
 # patch yt-dlp to not call subprocesses, but to call ffmpeg.wasm
-import yt_dlp.utils._utils as yutils
+from yt_dlp.utils import _utils
 from js import ffmpegbridge, Object, ask_user_for_format
 from pyodide.ffi import to_js
 
@@ -34,8 +34,21 @@ def popen_run(cls, *args, **kwargs):
         raise Exception(f"yt-dlp attempted to call {args}, which isnt supported.")
 
 
-yutils.Popen.run = classmethod(popen_run)
+_utils.Popen.run = classmethod(popen_run)
 
+from yt_dlp import YoutubeDL
+from yt_dlp.postprocessor.common import PostProcessor
+from js import wrap_send_to_user
+
+
+class SendToUserPP(PostProcessor):
+    def __init__(self, downloader):
+        super().__init__(downloader)
+
+    def run(self, info):
+        from js import console
+        wrap_send_to_user(info["filepath"])
+        return [], info
 
 ydl_opts = {
     "outtmpl": "/dl/%(title)s [%(id)s].%(ext)s",
@@ -44,12 +57,10 @@ ydl_opts = {
     "format": "all"
 }
 
-import yt_dlp.YoutubeDL
-
 filename = None
 
 # get info
-with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+with YoutubeDL(ydl_opts) as ydl:
     info_dict = ydl.extract_info(downloadURL, download=False)
     # we need to do this if we are modifying the format, or else we get 403s
     info_dict_sanitized = ydl.sanitize_info(info_dict)
@@ -64,5 +75,6 @@ user_opts = run_sync(ask_user_for_format(to_js(info_dict_sanitized, dict_convert
 ydl_opts |= user_opts
 
 # now that we have the user's selection, we can download, using the existing info
-with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+with YoutubeDL(ydl_opts) as ydl:
+    ydl.add_post_processor(SendToUserPP(ydl), when="after_move")
     ydl.process_ie_result(info_dict)

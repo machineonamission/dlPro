@@ -182,19 +182,25 @@ async function main() {
     // run the Python script to download the video
     await pyodide.runPythonAsync(`downloadURL = """${dlurl}"""\n` + (await (await fetch("/worker/dl.py")).text()));
     console.log("yt-dlp finished");
-    let outfiles = [];
-    for (const file of pyodide.FS.readdir("/dl")) {
-        const filePath = `/dl/${file}`;
-        if (pyodide.FS.isDir(filePath) || [".", ".."].includes(file)) continue // skip directories and . and ..
-        console.log(`moving ${filePath} from yt-dlp to worker`);
-        let contents = pyodide.FS.readFile(filePath, {encoding: 'binary'});
-        pyodide.FS.unlink(filePath);
-        // let blob = new Blob(contents);
-        // let burl = URL.createObjectURL(blob);
-        iframe_port.postMessage({type: "result", name: file, contents: contents}, [contents.buffer]);
-    }
-    console.log("sending files from worker to main page")
-
+    await Promise.all(awaiting_sends);
     console.log("worker finished");
     self.close()
+}
+
+let awaiting_sends = []
+
+async function send_to_user(path) {
+    console.log(`moving ${path} from yt-dlp to worker`);
+    let contents = pyodide.FS.readFile(path, {encoding: 'binary'});
+    pyodide.FS.unlink(path);
+    // let blob = new Blob(contents);
+    // let burl = URL.createObjectURL(blob);
+    console.log(`moving ${path} from worker to iframe`);
+    iframe_port.postMessage({type: "result", name: path.split("/").at(-1), contents: contents}, [contents.buffer]);
+}
+
+function wrap_send_to_user(path) {
+    const p = send_to_user(path)
+    awaiting_sends.push(p);
+    return p;
 }
