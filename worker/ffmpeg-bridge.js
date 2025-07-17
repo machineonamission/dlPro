@@ -107,13 +107,9 @@ async function ffmpegbridge(mode, args) {
     }
 }
 
-// ripped from @ffmpeg/util, for some reason it wont import properly
-const toBlobURL = async (url, mimeType, monkeypatch) => {
-    const buf = await (await fetch(url)).arrayBuffer();
-    const blob = new Blob(monkeypatch ? [new TextEncoder().encode(monkeypatch), buf] : [buf], {type: mimeType});
-    let burl = URL.createObjectURL(blob);
-    return burl;
-};
+function geturl(url) {
+    return new URL(url, self.location.href).toString()
+}
 
 async function load() {
     console.log("loading ffmpeg");
@@ -127,9 +123,10 @@ async function load() {
     await ffmpeg.load({
         // ffmpeg wasm does weird url resolution, this is the easiest hack to fix it without calling
         //  chrome.runtime.getURL, which isnt a thing in workers
-        coreURL: new URL("/libs/ffmpeg/ffmpeg-core.js", self.location.href).toString(),
-        wasmURL: new URL("/libs/ffmpeg/ffmpeg-core.wasm", self.location.href).toString(),
-        classWorkerURL: new URL("/libs/ffmpeg/814.ffmpeg.js", self.location.href).toString(),
+        coreURL: geturl("/libs/ffmpeg/mt/ffmpeg-core.js"),
+        wasmURL: geturl("/libs/ffmpeg/mt/ffmpeg-core.wasm"),
+        workerURL: geturl("/libs/ffmpeg/mt/ffmpeg-core.worker.js"),
+        classWorkerURL: geturl("/libs/ffmpeg/814.ffmpeg.js"),
     });
     await ffmpeg.createDir("/dl")
     loaded = true;
