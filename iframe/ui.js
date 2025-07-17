@@ -22,6 +22,7 @@ const presets = {
 let format_selection;
 let manual = false;
 let advanced = false;
+
 // let format_promise;
 
 async function ask_user_for_format(info_dict) {
@@ -295,16 +296,24 @@ async function advanced_prompt() {
         <label for="advanced-format" class="form-label">yt-dlp format sort fields:</label>
         <input type="text" class="form-control" id="advanced-sort">
     </div>
+    <div>
+        <label for="advanced-json" class="form-label">JSON of extra yt-dlp options:</label>
+        <textarea class="form-control" id="advanced-json"></textarea>
+    </div>
     <a href="https://github.com/yt-dlp/yt-dlp/#format-selection">Documentation</a>
     <button class="btn btn-primary" type="submit" id="advanced-confirm">Confirm</button>
     `
     ui.innerHTML = advanced_ui;
     let format = document.getElementById("advanced-format");
     let sort = document.getElementById("advanced-sort");
+    let json = document.getElementById("advanced-json");
     let confirm = document.getElementById("advanced-confirm");
     return await new Promise(resolve => {
         confirm.addEventListener("click", () => {
             format_selection = {}
+            if (json.value) {
+                Object.assign(format_selection, JSON.parse(json.value));
+            }
             if (format.value) {
                 format_selection.format = format.value;
             }
