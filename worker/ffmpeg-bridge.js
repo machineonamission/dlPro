@@ -20,6 +20,7 @@ async function ffmpegbridge(mode, args) {
                 }
                 if (is_input) {
                     let file = arg;
+                    // idk this is something yt-dlp does
                     if (file.startsWith("file:")) {
                         file = file.slice(5);
                     }
@@ -42,6 +43,7 @@ async function ffmpegbridge(mode, args) {
         }
 
         console.log(`running ${mode} command`, args)
+        // hook stdout and stderr up to console.log AND we need to return them for things like ffprobe
         let stdout = "";
         let stderr = "";
         const logcallback = ({type, message}) => {
@@ -64,17 +66,19 @@ async function ffmpegbridge(mode, args) {
         }
         ffmpeg.on("progress", progresscallback)
 
+        // exec the command
         let code;
-        // debugger
         if (mode === "ffmpeg") {
             code = await ffmpeg.exec(args);
         } else if (mode === "ffprobe") {
             code = await ffmpeg.ffprobe(args);
         }
+        // release listeners so we can add new ones with context next time
         ffmpeg.off("log", logcallback)
         ffmpeg.off("progress", progresscallback)
         if (code !== 0) {
             console.log(`${mode} command failed with code ${code}`);
+            // dont throw an exception, failed commands dont do that
             // debugger
         } else if (mode === "ffmpeg") {
             // if last arg doesnt start with -, its probably the output. move to yt-dlp
@@ -87,9 +91,11 @@ async function ffmpegbridge(mode, args) {
                 }
                 console.log(`moving file ${file} from ffmpeg to pyodide`)
                 pyodide.FS.writeFile(file, await ffmpeg.readFile(file));
+                // once its sent back to yt-dlp, its not needed here. delete to save memory
+                await ffmpeg.deleteFile(file);
             }
         }
-        // delete all ffmpeg files. trying to save memory.
+        // delete any leftover files
         console.log(`deleting ffmpeg files`)
         for (let file of await ffmpeg.listDir("/dl")) {
             if (!file.isDir) {
@@ -108,21 +114,16 @@ async function ffmpegbridge(mode, args) {
 }
 
 function geturl(url) {
+    // ffmpeg wasm does weird url resolution, this is the easiest hack to fix it without calling
+    //  chrome.runtime.getURL, which isnt a thing in workers
     return new URL(url, self.location.href).toString()
 }
 
 async function load() {
     console.log("loading ffmpeg");
-    // bug in ffmpeg.wasm, tries to load in module mode. we need to patch
-    // also trust the urls for youtube
     // load ffmpeg wasm
-    // note: i tried multithreading mode and it didnt work, some weird csp error.
-    // i dont think any reencoding is done anyways so its Fine
     ffmpeg = new FFmpegWASM.FFmpeg();
-    // blob url thing bypasses extra strict CORS on workers
     await ffmpeg.load({
-        // ffmpeg wasm does weird url resolution, this is the easiest hack to fix it without calling
-        //  chrome.runtime.getURL, which isnt a thing in workers
         coreURL: geturl("/libs/ffmpeg/mt/ffmpeg-core.js"),
         wasmURL: geturl("/libs/ffmpeg/mt/ffmpeg-core.wasm"),
         workerURL: geturl("/libs/ffmpeg/mt/ffmpeg-core.worker.js"),

@@ -17,6 +17,7 @@ from js import ffmpegbridge, Object, ask_user_for_format
 from pyodide.ffi import to_js
 
 
+# hijacks yt-dlp's attempts to run ffmpeg/ffprobe, and instead runs the ffmpeg.wasm bridge
 def popen_run(cls, *args, **kwargs):
     # we dont need to actually call ffmpeg to just get basic static info.
     if args[0] == ["ffmpeg", "-bsfs"] or args[0] == ["ffprobe", "-bsfs"]:
@@ -44,6 +45,7 @@ from yt_dlp.postprocessor.common import PostProcessor
 from js import wrap_send_to_user
 
 
+# hooks into yt-dlp to send files to the user once they are downloaded
 class SendToUserPP(PostProcessor):
     def __init__(self, downloader):
         super().__init__(downloader)
@@ -67,9 +69,10 @@ filename = None
 # get info
 with YoutubeDL(ydl_opts) as ydl:
     info_dict = ydl.extract_info(downloadURL, download=False)
-    # we need to do this if we are modifying the format, or else we get 403s
-    info_dict_sanitized = ydl.sanitize_info(info_dict)
     print(ydl.render_formats_table(info_dict))
+    # sanitize for """json""" encoding
+    info_dict_sanitized = ydl.sanitize_info(info_dict)
+
 
 # delete our "all" key and let the user select
 del ydl_opts["format"]

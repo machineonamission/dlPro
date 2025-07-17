@@ -1,5 +1,6 @@
 function proxy_fetch(request) {
     return new Promise(resolve => {
+        // unpack "serialized" request
         let {
             method,
             url,
@@ -10,7 +11,7 @@ function proxy_fetch(request) {
             credentials
         } = request;
 
-        // debugger
+        // adapted from pyodide_http's internal fetch function.
         if (params) {
             let urlparams = new URLSearchParams()
             for (const [k, v] of Object.entries(params)) {

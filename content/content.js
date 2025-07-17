@@ -30,7 +30,7 @@ iframe.addEventListener('load', () => {
     const iframe_port = iframe_channel.port1;
     const worker_port = worker_channel.port1;
     // Use port1 in the container
-    iframe_port.onmessage = e => console.debug('content recieved message from iframe:', e.data);
+    iframe_port.onmessage = e => console.debug('content received message from iframe:', e.data);
     iframe_port.postMessage({"type": "dlurl", "dlurl": location.href});
     worker_port.onmessage = e => {
         switch (e.data.type) {

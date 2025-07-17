@@ -44,7 +44,7 @@ let content_to_worker_port;
 let dlurl;
 
 function content_port_onmessage(event) {
-    console.debug("iframe recieved message from content", event.data)
+    console.debug("iframe received message from content", event.data)
     switch (event.data.type) {
         case "dlurl":
             // this is a request for the current url, send it
@@ -56,10 +56,10 @@ function content_port_onmessage(event) {
     }
 }
 
-// recieve port from content script
+// receive port from content script
 window.addEventListener('message', event => {
     if (event.data === "init") {
-        console.debug("iframe recieved init message");
+        console.debug("iframe received init message");
         content_port = event.ports[0];
         content_to_worker_port = event.ports[1];
         content_port.onmessage = content_port_onmessage;
@@ -77,6 +77,7 @@ let dlpro_worker;
 let worker_port;
 
 function save_data(data, fileName) {
+    // known janky hack to save blobs: create an a, link the blob, click it.
     console.log("Moving", fileName, "from iframe to user");
     let a = document.createElement("a");
     document.body.appendChild(a);
@@ -93,14 +94,15 @@ function save_data(data, fileName) {
 }
 
 async function main() {
-    dlpro_worker = new Worker("../worker/worker.js");
+    // spawn our worker
+    dlpro_worker = new Worker("/worker/worker.js");
     // init 2 way channel
     const worker_channel = new MessageChannel();
     worker_port = worker_channel.port1;
     dlpro_worker.postMessage("init", [worker_channel.port2, content_to_worker_port]);
-    // message reciever
+    // message receiver
     worker_port.onmessage = event => {
-        console.debug("iframe recieved message from worker", event.data)
+        console.debug("iframe received message from worker", event.data)
         let message = event.data;
         // console.log("content", message)
         switch (message.type) {
@@ -122,6 +124,7 @@ async function main() {
                 break;
         }
     }
+    // wait for dlurl
     await new Promise(resolve => {
         if (dlurl) {
             resolve(dlurl)
@@ -129,10 +132,11 @@ async function main() {
             dlurl_promise = resolve
         }
     })
+    // send to worker
     worker_port.postMessage({type: "dlurl", dlurl: dlurl});
-    // gather cookies (can only be done from the background script)
+    // gather cookies (cannot be done from a worker, and needs dlurl)
     const cookies = await chrome.cookies.getAll({url: dlurl});
-// serialize to a format yt-dlp expects
+    // serialize to a format yt-dlp expects
     const sCookies = netscapeSerializer(cookies);
     // send cookies
     worker_port.postMessage({type: "cookies", cookies: sCookies});

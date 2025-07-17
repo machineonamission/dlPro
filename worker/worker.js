@@ -1,5 +1,3 @@
-// thanks to https://github.com/warren-bank/crx-yt-dlp for a quick start
-
 // patch console.log to output to the UI
 const originalConsoleLog = console.log;
 console.log = function (...args) {
@@ -17,16 +15,18 @@ console.log = function (...args) {
 };
 
 let cookies;
-let cookie_promise;
-
 let dlurl;
+
+// async bullshittery
+let cookie_promise;
 let dlurl_promise;
+let format_promise;
 
 let iframe_port;
 let content_port;
 
-let format_promise;
 
+// ask iframe to ask user for format, returns a promise that resolves when it returns
 function ask_user_for_format(info_dict) {
     return new Promise((resolve, reject) => {
         format_promise = resolve;
@@ -38,10 +38,11 @@ function ask_user_for_format(info_dict) {
 }
 
 function iframe_port_onmessage(event) {
-    console.debug("worker recieved message from iframe", event.data)
+    console.debug("worker received message from iframe", event.data)
     let message = event.data;
     // console.log("worker", message)
     switch (message.type) {
+        // when data is received, save it and resolve any waiting promises.
         case "cookies":
             cookies = message.cookies;
             if (cookie_promise) {
@@ -63,8 +64,9 @@ function iframe_port_onmessage(event) {
 
 function content_port_onmessage(event) {
     let message = event.data;
-    console.debug("worker recieved message from content", event.data)
+    console.debug("worker received message from content", event.data)
     switch (message.type) {
+        // all we care about from content is the proxy. forward to any awaiting promises.
         case "response":
             response_resolve(pyodide.toPy(message.response));
             response_resolve = null;
@@ -74,11 +76,13 @@ function content_port_onmessage(event) {
 
 onmessage = event => {
     if (event.data === "init") {
-        console.debug("worker recieved init message");
+        console.debug("worker received init message");
+        // set up channels that go iframe or content
         iframe_port = event.ports[0];
         content_port = event.ports[1];
         iframe_port.onmessage = iframe_port_onmessage
         content_port.onmessage = content_port_onmessage;
+        // now we can begin
         main().catch(e => {
             console.error(e)
             console.log(`⚠️ FATAL WORKER ERROR\n${e.toString()}\n${e.stack}`);
@@ -87,14 +91,12 @@ onmessage = event => {
     }
 };
 
+
+// handle raw stdout from pyodide, send message whenever we receive a \n OR a \r. by default, /r doesnt do this.
 let stdout_buf = [];
 let stderr_buf = [];
-
-// Create a reusable UTF-8 decoder
 const decoder = new TextDecoder('utf-8');
-
-const delimiters = [0x0a, 0x0d];
-
+const delimiters = [0x0a, 0x0d]; // \n and \r
 function pythonouthandler(byte, mode) {
     if (delimiters.includes(byte)) {
         const chunk = new Uint8Array(mode === "stdout" ? stdout_buf : stderr_buf);
@@ -123,27 +125,32 @@ async function main() {
     // console.log("loading js libs")
     console.log("worker started");
     importScripts(
+        // patches for fuckass lib code
         "/worker/webpack_patch.js",
+        "/worker/classic_worker_patch.js",
+        // libs
         "/libs/pyodide/pyodide.js",
         "/libs/ffmpeg/ffmpeg.js",
+        // ffmpeg wrapper
         "/worker/ffmpeg-bridge.js",
-        "/worker/classic_worker_patch.js",
+        // proxy requests
         "/worker/xmlproxy_worker.js",
+        // create a worker for streaming requests
         "/worker/pyodide_streaming_worker_proxy.js",
     )
-    // console.log("sab", SharedArrayBuffer)
-    // console.log("js libs loaded");
     // load Pyodide and import required things
     console.log("Loading Pyodide");
     pyodide = await loadPyodide({
         indexURL: "/libs/pyodide/"
     });
+    // set up our stdin/err handlers
     pyodide.setStdin({error: true});
     pyodide.setStdout({raw: (byte) => pythonouthandler(byte, "stdout")});
     pyodide.setStderr({raw: (byte) => pythonouthandler(byte, "stderr")});
+    // load easy libs
     await pyodide.loadPackage("/libs/pyodide/yt_dlp-2025.6.30-py3-none-any.whl")
-    // await pyodide.loadPackage('pyodide_http')
     await pyodide.loadPackage("ssl");
+
     console.log("loading pyodide_http_fork")
     pyodide.FS.mkdir("/modules")
     pyodide.FS.mkdir("/modules/pyodide_http_fork")
@@ -159,7 +166,7 @@ async function main() {
     )
 
     pyodide.FS.mkdir("/dl")
-    // wait to recieve cookies if we havent
+    // wait to receive cookies if we havent
     await new Promise((resolve, reject) => {
         if (cookies) {
             resolve(cookies);
@@ -167,10 +174,9 @@ async function main() {
             cookie_promise = resolve;
         }
     })
-    // debugger
     // pass cookie file
     pyodide.FS.writeFile('/cookies.txt', cookies);
-    // wait to recieve the download URL if we havent
+    // wait to receive the download URL if we havent
     await new Promise((resolve, reject) => {
         if (dlurl) {
             resolve(dlurl);
@@ -180,9 +186,15 @@ async function main() {
     })
     console.log("running yt-dlp")
     // run the Python script to download the video
-    await pyodide.runPythonAsync(`downloadURL = """${dlurl}"""\n` + (await (await fetch("/worker/dl.py")).text()));
+    // yes passing the url like this is hacky, but who cares
+    await pyodide.runPythonAsync(
+        `downloadURL = """${dlurl}"""
+        ${await (await fetch("/worker/dl.py")).text()}`
+    );
     console.log("yt-dlp finished");
+    // wait for any pending file receives to finish
     await Promise.all(awaiting_sends);
+    // goodbye!
     console.log("worker finished");
     self.close()
 }

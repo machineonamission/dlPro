@@ -9,12 +9,4 @@ chrome.action.onClicked.addListener(async (tab) => {
     });
 });
 
-function handleThemeChange(dark) {
-    let icondata = {};
-    for (const scale of [16, 32, 64, 48, 128]) {
-        icondata[`${scale}`] = `/logo/${dark ? "dark" : "light"}/logo-${scale}.png`;
-    }
-    chrome.action.setIcon(icondata)
-}
-
 // importScripts("/theme_handler.js")

@@ -1,5 +1,6 @@
 let html_console = document.getElementById("console");
 
+// throw data into the console
 function uilog(message) {
     html_console.textContent += message;
     html_console.scrollTo({
@@ -9,6 +10,7 @@ function uilog(message) {
     });
 }
 
+// presets, always expandable. they map to yt-dlp options
 const presets = {
     "Best": {},
     "Audio": {
@@ -21,10 +23,8 @@ const presets = {
 
 let format_selection;
 let manual = false;
-let advanced = false;
 
-// let format_promise;
-
+// called by a message, ask for format, and wait for response
 async function ask_user_for_format(info_dict) {
     if (format_selection !== undefined) {
         // if user selected a preset, return it
@@ -41,6 +41,13 @@ async function ask_user_for_format(info_dict) {
     }
 }
 
+/**
+ * Convert byte count to a human-readable string.
+ * @param {number} size amount of whatever the unit is
+ * @param {boolean} bytes true if bytes, false if bits
+ * @param {boolean} binary_base true if binary base (1024/KiB), false if decimal base (1000/kB)
+ * @param {int} decimals number of sigfigs to show, defaults to 3
+ */
 function bytes_to_string(size, bytes = true, binary_base = true, decimals = 3) {
     const unitname = bytes ? "B" : "b";
     if (!+size) return '0 ' + unitname;
@@ -55,15 +62,18 @@ function bytes_to_string(size, bytes = true, binary_base = true, decimals = 3) {
     return `${parseFloat((size / Math.pow(k, i)).toPrecision(dm))} ${sizes[i]}`
 }
 
+// filesize to string
 function size_to_string(bytes) {
     return bytes_to_string(bytes);
 }
 
+// bitrate to string
 function rate_to_string(kbps) {
     if (!kbps) return;
     return bytes_to_string(kbps * 1000, false, false) + "ps"
 }
 
+// string the size of a format
 function format_size(format) {
     if (format.filesize) {
         return size_to_string(format.filesize)
@@ -72,11 +82,13 @@ function format_size(format) {
     }
 }
 
+// concat any details, ignore empty ones
 function concat_details(details) {
     const filtered_details = details.filter(d => d)
     return filtered_details.join(" | ");
 }
 
+// details for videos
 function video_specific_details(format) {
     return concat_details([
         format.resolution,
@@ -85,6 +97,7 @@ function video_specific_details(format) {
     ])
 }
 
+// details for audios
 function audio_specific_details(format) {
     return concat_details([
         format.acodec?.split(".").at(0),
@@ -92,6 +105,7 @@ function audio_specific_details(format) {
     ])
 }
 
+// details for videos, audios, bundles, whatever.
 function generic_format_string(details, format, include_tbr = false) {
     const fields = concat_details([
         details,
@@ -103,21 +117,27 @@ function generic_format_string(details, format, include_tbr = false) {
     return `${format.format_id}: ${fields}`;
 }
 
+// combine video details with generic details
 function video_to_string(format) {
     return generic_format_string(video_specific_details(format), format)
 }
 
+// combine audio details with generic details
 function audio_to_string(format) {
     return generic_format_string(audio_specific_details(format), format)
 }
 
+// display other formats
 function bundle_to_string(format) {
     const vsd = video_specific_details(format);
     const asd = audio_specific_details(format);
     let details = null;
+    // if we have either details, show whatever we have, and ? as a placeholder
+    //  otherwise, dont show (?) + (?) that is meaningless
     if (vsd || asd) {
         details = `(${vsd || "?"}) + (${asd || "?"})`;
     }
+    // combine bundled details with generic details
     return generic_format_string(
         details,
         format,
@@ -126,13 +146,14 @@ function bundle_to_string(format) {
 }
 
 async function manual_select(info_dict) {
-    // console.log(info_dict)
+    // if we have formats at all
     if (info_dict.formats && info_dict.formats.length > 0) {
+        // sort our formats into pure videos, pure audios, and bundles/other
         let pure_videos = [];
         let pure_audios = [];
         let video_and_audio = [];
         for (const format of info_dict.formats) {
-            // format.vcodec could be undefined, but that's unknown, so i assume means something is there, just not known what
+            // format.vcodec could be undefined, but that's unknown, NOT "none"
             let has_video = format.vcodec !== "none";
             let has_audio = format.acodec !== "none";
             if (has_video === has_audio) { // either has both video and audio, or has neither (failsafe for weird formats)
@@ -148,9 +169,11 @@ async function manual_select(info_dict) {
         pure_videos.reverse()
         video_and_audio.reverse()
 
+        // if we have bundles and pure formats, we can toggle between them
         let bundle_toggle = pure_videos.length > 0 && video_and_audio.length > 0;
         let toggle_ui;
         if (bundle_toggle) {
+            // show toggle between pure formats and bundles
             toggle_ui = `
             <div id="format-bundle-toggle">
                 <div class="form-check">
@@ -170,11 +193,11 @@ async function manual_select(info_dict) {
         } else {
             toggle_ui = "";
         }
-        let audio_ui = "";
+        // show dropdown for pure videos
         let video_ui = "";
-        let video_and_audio_ui = "";
         if (pure_videos.length > 0) {
             let options = `<option value="">None</option>`;
+            // None should be at the top, but not selected by default
             let first = true;
             for (const format of pure_videos) {
                 options += `
@@ -192,6 +215,9 @@ async function manual_select(info_dict) {
             </div>
            `
         }
+
+        // show dropdown for pure audios
+        let audio_ui = "";
         if (pure_audios.length > 0) {
             let options = `<option value="">None</option>`;
             let first = true;
@@ -210,6 +236,9 @@ async function manual_select(info_dict) {
                 </select>
             </div>`
         }
+
+        // show dropdown for video + audio bundles or other formats
+        let video_and_audio_ui = "";
         if (video_and_audio.length > 0) {
             let options = "";
             for (const format of video_and_audio) {
@@ -228,6 +257,7 @@ async function manual_select(info_dict) {
         }
 
 
+        // put everything together
         ui.innerHTML = `
         <h2>Select download format:</h2>
         ${toggle_ui}
@@ -236,12 +266,15 @@ async function manual_select(info_dict) {
         ${video_and_audio_ui}
         <button class="btn btn-primary" type="submit" id="preset-confirm">Confirm</button>
         `;
+        // retrieve js elements
         let video_select = document.getElementById("video-select");
         let audio_select = document.getElementById("audio-select");
         let va_select = document.getElementById("va-select");
         let no = document.getElementById('format-bundle-no')
         let yes = document.getElementById('format-bundle-yes')
+        // if we have a toggle
         if (bundle_toggle) {
+            // listen for changes to the toggle, and update the ui accordingly
             let bundle_toggle_no = document.querySelectorAll(".format-bundle-no");
             let bundle_toggle_yes = document.querySelectorAll(".format-bundle-yes");
             bundle_toggle_yes.forEach((bundle) => {
@@ -268,32 +301,32 @@ async function manual_select(info_dict) {
                 }
             });
         }
+        // wait for confirm click
         let confirm = document.getElementById("preset-confirm");
-        return await new Promise(resolve => {
-            confirm.addEventListener("click", () => {
-                let video_format = video_select?.value;
-                let audio_format = audio_select?.value;
-                let va_format = va_select?.value;
-                let formats;
-                // collect all possible formats the user may have selected, if they exist
-                if (bundle_toggle) {
-                    if (yes.checked) {
-                        formats = [va_format];
-                    } else {
-                        formats = [video_format, audio_format];
-                    }
-                } else {
-                    formats = [va_format, video_format, audio_format];
-                }
-                // filter out empty and join with +
-                format_selection = {
-                    format: formats.filter(f => f).join("+")
-                };
-                ui.innerHTML = "";
-                resolve(format_selection)
-            })
-        })
+        await wait_for_button_click(confirm)
+
+        let video_format = video_select?.value;
+        let audio_format = audio_select?.value;
+        let va_format = va_select?.value;
+        let formats;
+        // collect all possible formats the user may have selected, if they exist
+        if (bundle_toggle) {
+            if (yes.checked) {
+                formats = [va_format];
+            } else {
+                formats = [video_format, audio_format];
+            }
+        } else {
+            formats = [va_format, video_format, audio_format];
+        }
+        // filter out empty and join with +
+        format_selection = {
+            format: formats.filter(f => f).join("+")
+        };
+        ui.innerHTML = "";
+        return format_selection
     } else {
+        // no formats, just show error
         ui.innerHTML = "<p>⚠️ No formats available.</p>";
         if (["playlist", "multi_video"].includes(info_dict._type)) {
             ui.innerHTML += "<p>Manual format selection is not supported for playlists. Please refresh and choose a preset.</p>";
@@ -306,9 +339,11 @@ async function manual_select(info_dict) {
 let ui = document.getElementById("ui");
 
 async function show_format_selection() {
+    // get all presets
     let preset_names = Object.keys(presets);
     preset_names.push("Manual")
     preset_names.push("Advanced")
+    // make UI for presets
     const preset_ui = `
     <h2><label for="preset-select">Select download preset:</label></h2>
     <select class="form-select" id="preset-select">
@@ -325,34 +360,38 @@ async function show_format_selection() {
     <button class="btn btn-primary" type="submit" id="preset-confirm">Confirm</button>
     `
     ui.innerHTML = preset_ui;
+    // grab js elements
     let select = document.getElementById("preset-select");
     let compat = document.getElementById("preset-compat");
     let confirm = document.getElementById("preset-confirm");
-    return await new Promise(resolve => {
-        confirm.addEventListener("click", async () => {
-            let val = select.value;
-            let compat_val = compat.checked;
-            if (val === "Manual") {
-                manual = true;
-                ui.innerHTML = "<p>Waiting for format list...</p>";
-            } else if (val === "Advanced") {
-                await advanced_prompt()
-            } else {
-                format_selection = presets[val]
-                if (compat_val) {
-                    let sort = format_selection.format_sort || [];
-                    sort.unshift("ext");
-                    format_selection.format_sort = sort;
-                }
-                ui.innerHTML = "";
-            }
-            resolve()
-        })
-    })
+    // wait for button click
+    await wait_for_button_click(confirm)
+    let val = select.value;
+    let compat_val = compat.checked;
+    if (val === "Manual") {
+        // if user chose manual, wait for that
+        manual = true;
+        ui.innerHTML = "<p>Waiting for format list...</p>";
+    } else if (val === "Advanced") {
+        // if user chose advanced, show immediately
+        await advanced_prompt()
+    } else {
+        // if user chose a preset, set format_selection to that preset
+        format_selection = presets[val]
+        // if compat is checked, we need to sort by extension
+        if (compat_val) {
+            let sort = format_selection.format_sort || [];
+            sort.unshift("ext");
+            format_selection.format_sort = sort;
+        }
+        // clear ui
+        ui.innerHTML = "";
+    }
 
 }
 
 async function advanced_prompt() {
+    // despite having the name "advanced", this selection is very simple, just pass raw values to yt-dlp
     const no_spellcheck = `spellcheck="false" autocorrect="off" autocapitalize="off" autocomplete="off"`
     const advanced_ui = `
     <h2>Advanced format selection:</h2>
@@ -376,23 +415,29 @@ async function advanced_prompt() {
     let sort = document.getElementById("advanced-sort");
     let json = document.getElementById("advanced-json");
     let confirm = document.getElementById("advanced-confirm");
-    return await new Promise(resolve => {
-        confirm.addEventListener("click", () => {
-            format_selection = {}
-            if (json.value) {
-                Object.assign(format_selection, JSON.parse(json.value));
-            }
-            if (format.value) {
-                format_selection.format = format.value;
-            }
-            if (sort.value) {
-                format_selection.format_sort = sort.value.split(",");
-            }
-            ui.innerHTML = "";
-            resolve(format_selection)
-        })
-    })
+    await wait_for_button_click(confirm)
+    format_selection = {}
+    // if user entered json shit, add to our options
+    if (json.value) {
+        Object.assign(format_selection, JSON.parse(json.value));
+    }
+    // add predefined fields if user set them
+    if (format.value) {
+        format_selection.format = format.value;
+    }
+    if (sort.value) {
+        format_selection.format_sort = sort.value.split(",");
+    }
+    // clear ui
+    ui.innerHTML = "";
+    return format_selection
 
+}
+
+function wait_for_button_click(button) {
+    return new Promise(resolve => {
+        button.addEventListener("click", resolve)
+    })
 }
 
 let format_promise = show_format_selection()
