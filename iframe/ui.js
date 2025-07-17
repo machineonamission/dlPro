@@ -126,7 +126,7 @@ function bundle_to_string(format) {
 }
 
 async function manual_select(info_dict) {
-    console.log(info_dict)
+    // console.log(info_dict)
     if (info_dict.formats && info_dict.formats.length > 0) {
         let pure_videos = [];
         let pure_audios = [];
