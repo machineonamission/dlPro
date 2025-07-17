@@ -22,10 +22,10 @@ const presets = {
 let format_selection;
 let manual = false;
 let advanced = false;
-let format_promise;
+// let format_promise;
 
 async function ask_user_for_format(info_dict) {
-    if (format_selection) {
+    if (format_selection !== undefined) {
         // if user selected a preset, return it
         return format_selection;
     } else if (manual) {
@@ -34,9 +34,7 @@ async function ask_user_for_format(info_dict) {
     } else {
         // user hasn't picked anything, wait for selection
         uilog("Waiting for preset selection...");
-        await new Promise(resolve => {
-            format_promise = resolve;
-        })
+        await format_promise;
         // re-check for manual or preset. sure do hope this doesnt recurse!
         return await ask_user_for_format(info_dict);
     }
@@ -168,7 +166,7 @@ async function manual_select(info_dict) {
         ${video_ui}
         ${audio_ui}
         ${video_and_audio_ui}
-        <button class="btn btn-primary" type="button" id="preset-confirm">Confirm</button>
+        <button class="btn btn-primary" type="submit" id="preset-confirm">Confirm</button>
         `;
         let video_select = document.getElementById("video-select");
         let audio_select = document.getElementById("audio-select");
@@ -237,10 +235,6 @@ async function manual_select(info_dict) {
     }
 }
 
-async function advanced_select(info_dict) {
-
-}
-
 let ui = document.getElementById("ui");
 
 async function show_format_selection() {
@@ -260,35 +254,68 @@ async function show_format_selection() {
         Prefer compatible container (e.g. mp4, m4a, mp3)
       </label>
     </div>
-    <button class="btn btn-primary" type="button" id="preset-confirm">Confirm</button>
+    <button class="btn btn-primary" type="submit" id="preset-confirm">Confirm</button>
     `
     ui.innerHTML = preset_ui;
     let select = document.getElementById("preset-select");
     let compat = document.getElementById("preset-compat");
     let confirm = document.getElementById("preset-confirm");
-    confirm.addEventListener("click", () => {
-        let val = select.value;
-        let compat_val = compat.checked;
-        if (val === "Manual") {
-            manual = true;
-            ui.innerHTML = "<p>Waiting for format list...</p>";
-        } else if (val === "Advanced") {
-            advanced = true;
-            throw new Error("Advanced format selection is not implemented yet.");
-        } else {
-            format_selection = presets[val]
-            if (compat_val) {
-                let sort = format_selection.format_sort || [];
-                sort.unshift("ext");
-                format_selection.format_sort = sort;
+    return await new Promise(resolve => {
+        confirm.addEventListener("click", async () => {
+            let val = select.value;
+            let compat_val = compat.checked;
+            if (val === "Manual") {
+                manual = true;
+                ui.innerHTML = "<p>Waiting for format list...</p>";
+            } else if (val === "Advanced") {
+                await advanced_prompt()
+            } else {
+                format_selection = presets[val]
+                if (compat_val) {
+                    let sort = format_selection.format_sort || [];
+                    sort.unshift("ext");
+                    format_selection.format_sort = sort;
+                }
+                ui.innerHTML = "";
             }
-            ui.innerHTML = "";
-        }
-        if (format_promise) {
-            format_promise()
-            format_promise = null;
-        }
+            resolve()
+        })
     })
+
 }
 
-show_format_selection()
+async function advanced_prompt() {
+    const advanced_ui = `
+    <h2>Advanced format selection:</h2>
+    <div>
+        <label for="advanced-format" class="form-label">yt-dlp format string:</label>
+        <input type="text" class="form-control" id="advanced-format">
+    </div>
+    <div>
+        <label for="advanced-format" class="form-label">yt-dlp format sort fields:</label>
+        <input type="text" class="form-control" id="advanced-sort">
+    </div>
+    <a href="https://github.com/yt-dlp/yt-dlp/#format-selection">Documentation</a>
+    <button class="btn btn-primary" type="submit" id="advanced-confirm">Confirm</button>
+    `
+    ui.innerHTML = advanced_ui;
+    let format = document.getElementById("advanced-format");
+    let sort = document.getElementById("advanced-sort");
+    let confirm = document.getElementById("advanced-confirm");
+    return await new Promise(resolve => {
+        confirm.addEventListener("click", () => {
+            format_selection = {}
+            if (format.value) {
+                format_selection.format = format.value;
+            }
+            if (sort.value) {
+                format_selection.format_sort = sort.value.split(",");
+            }
+            ui.innerHTML = "";
+            resolve(format_selection)
+        })
+    })
+
+}
+
+let format_promise = show_format_selection()
