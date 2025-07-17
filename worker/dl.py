@@ -16,6 +16,7 @@ from yt_dlp.utils import _utils
 from js import ffmpegbridge, Object, ask_user_for_format
 from pyodide.ffi import to_js
 
+
 def popen_run(cls, *args, **kwargs):
     # we dont need to actually call ffmpeg to just get basic static info.
     if args[0] == ["ffmpeg", "-bsfs"] or args[0] == ["ffprobe", "-bsfs"]:
@@ -29,9 +30,11 @@ def popen_run(cls, *args, **kwargs):
                 to_js(args[0][1:], dict_converter=Object.fromEntries)
             )
         ).to_py()
-
     else:
-        raise Exception(f"yt-dlp attempted to call {args}, which isnt supported.")
+        print(f"yt-dlp attempted to call {args}, which isnt supported.")
+        # checked, this is what Popen runs if the exe isnt found, which is what we want since it essentially isnt
+        raise FileNotFoundError(f"yt-dlp attempted to call {args}, which isnt supported.")
+        # return "", "", 1
 
 
 _utils.Popen.run = classmethod(popen_run)
@@ -50,11 +53,13 @@ class SendToUserPP(PostProcessor):
         wrap_send_to_user(info["filepath"])
         return [], info
 
+
 ydl_opts = {
     "outtmpl": "/dl/%(title)s [%(id)s].%(ext)s",
     "cookiefile": "/cookies.txt",
     # you need this or else yt-dlp leaves out info from the info_dict, which breaks changing formats
-    "format": "all"
+    "format": "all",
+    # "verbose": True
 }
 
 filename = None

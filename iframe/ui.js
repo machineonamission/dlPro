@@ -41,38 +41,88 @@ async function ask_user_for_format(info_dict) {
     }
 }
 
-function formatBytes(bytes, decimals = 2) {
-    if (!+bytes) return '0 Bytes'
+function bytes_to_string(size, bytes = true, binary_base = true, decimals = 3) {
+    const unitname = bytes ? "B" : "b";
+    if (!+size) return '0 ' + unitname;
 
-    const k = 1024
+    const k = binary_base ? 1024 : 1000;
     const dm = decimals < 0 ? 0 : decimals
-    const sizes = ['B', 'KiB', 'MiB', 'GiB', 'TiB', 'PiB', 'EiB', 'ZiB', 'YiB']
+    const sizes = ['', binary_base ? 'K' : 'k', 'M', 'G', 'T', 'P', 'E', 'Z', 'Y']
+        .map((s => s + (binary_base ? "i" : "") + unitname))
 
-    const i = Math.floor(Math.log(bytes) / Math.log(k))
+    const i = Math.floor(Math.log(size) / Math.log(k))
 
-    return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`
+    return `${parseFloat((size / Math.pow(k, i)).toPrecision(dm))} ${sizes[i]}`
+}
+
+function size_to_string(bytes) {
+    return bytes_to_string(bytes);
+}
+
+function rate_to_string(kbps) {
+    if (!kbps) return;
+    return bytes_to_string(kbps * 1000, false, false) + "ps"
 }
 
 function format_size(format) {
     if (format.filesize) {
-        return formatBytes(format.filesize)
+        return size_to_string(format.filesize)
     } else if (format.filesize_approx) {
-        return "~ " + formatBytes(format.filesize_approx)
-    } else {
-        return "? B"
+        return "~" + size_to_string(format.filesize_approx)
     }
 }
 
-function video_format_to_string(format) {
-    return `${format.resolution} | ${format.vcodec}`;
+function concat_details(details) {
+    const filtered_details = details.filter(d => d)
+    return filtered_details.join(" | ");
 }
 
-function audio_format_to_string(format) {
-    return `${format.acodec}`;
+function video_specific_details(format) {
+    return concat_details([
+        format.resolution,
+        format.vcodec?.split(".").at(0),
+        rate_to_string(format.vbr),
+    ])
 }
 
-function generic_format_string(details, format) {
-    return `${format.format_id}: ${details} | .${format.ext} | ${Math.round(format.tbr)} kb/s | ${format_size(format)}`;
+function audio_specific_details(format) {
+    return concat_details([
+        format.acodec?.split(".").at(0),
+        rate_to_string(format.abr)
+    ])
+}
+
+function generic_format_string(details, format, include_tbr = false) {
+    const fields = concat_details([
+        details,
+        `.${format.ext}`,
+        include_tbr ? rate_to_string(format.tbr) : null,
+        format_size(format),
+        format.format_note
+    ])
+    return `${format.format_id}: ${fields}`;
+}
+
+function video_to_string(format) {
+    return generic_format_string(video_specific_details(format), format)
+}
+
+function audio_to_string(format) {
+    return generic_format_string(audio_specific_details(format), format)
+}
+
+function bundle_to_string(format) {
+    const vsd = video_specific_details(format);
+    const asd = audio_specific_details(format);
+    let details = null;
+    if (vsd || asd) {
+        details = `(${vsd || "?"}) + (${asd || "?"})`;
+    }
+    return generic_format_string(
+        details,
+        format,
+        !format.vbr || !format.abr // include tbr if we are missing either vbr or abr
+    )
 }
 
 async function manual_select(info_dict) {
@@ -82,9 +132,10 @@ async function manual_select(info_dict) {
         let pure_audios = [];
         let video_and_audio = [];
         for (const format of info_dict.formats) {
-            let has_video = format.vcodec && format.vcodec !== "none";
-            let has_audio = format.acodec && format.acodec !== "none";
-            if (has_video && has_audio) {
+            // format.vcodec could be undefined, but that's unknown, so i assume means something is there, just not known what
+            let has_video = format.vcodec !== "none";
+            let has_audio = format.acodec !== "none";
+            if (has_video === has_audio) { // either has both video and audio, or has neither (failsafe for weird formats)
                 video_and_audio.push(format);
             } else if (has_video) {
                 pure_videos.push(format);
@@ -111,7 +162,7 @@ async function manual_select(info_dict) {
                 <div class="form-check">
                   <input class="form-check-input" type="radio" name="format-bundle" id="format-bundle-yes">
                   <label class="form-check-label" for="format-bundle-yes">
-                    Select pre-combined video and audio
+                    Select pre-combined video and audio, or unknown formats
                   </label>
                 </div>
             </div>
@@ -126,38 +177,54 @@ async function manual_select(info_dict) {
             let options = `<option value="">None</option>`;
             let first = true;
             for (const format of pure_videos) {
-                options += `<option value="${format.format_id}" ${first ? `selected="selected"` : ``}>${generic_format_string(video_format_to_string(format), format)}</option>`
+                options += `
+                    <option value="${format.format_id}" ${first ? `selected="selected"` : ``}>
+                        ${video_to_string(format)}
+                    </option>`
                 first = false;
             }
             video_ui = `
-            <label for="video-select" class="format-bundle-no">Select video format:</label>
-            <select class="form-select format-bundle-no" id="video-select">
-               ${options}
-            </select>`
+            <div class="format-bundle-no">
+                <label for="video-select" >Select video format:</label>
+                <select class="form-select" id="video-select">
+                   ${options}
+                </select>
+            </div>
+           `
         }
         if (pure_audios.length > 0) {
             let options = `<option value="">None</option>`;
             let first = true;
             for (const format of pure_audios) {
-                options += `<option value="${format.format_id}"  ${first ? `selected="selected"` : ``}>${generic_format_string(audio_format_to_string(format), format)}</option>`
+                options += `
+                    <option value="${format.format_id}" ${first ? `selected="selected"` : ``}>
+                        ${audio_to_string(format)}
+                    </option>`
                 first = false;
             }
             audio_ui = `
-            <label for="audio-select" class="format-bundle-no">Select audio format:</label>
-            <select class="form-select format-bundle-no" id="audio-select">
-               ${options}
-            </select>`
+            <div class="format-bundle-no">
+                <label for="audio-select" >Select audio format:</label>
+                <select class="form-select" id="audio-select">
+                   ${options}
+                </select>
+            </div>`
         }
         if (video_and_audio.length > 0) {
             let options = "";
             for (const format of video_and_audio) {
-                options += `<option value="${format.format_id}">${generic_format_string(video_format_to_string(format) + " | " + audio_format_to_string(format), format)}</option>`
+                options += `
+                    <option value="${format.format_id}">
+                        ${bundle_to_string(format)}
+                    </option>`
             }
             video_and_audio_ui = `
-            <label for="va-select" class="format-bundle-yes">Select video + audio bundle format:</label>
-            <select class="form-select format-bundle-yes" id="va-select">
-               ${options}
-            </select>`
+            <div class="format-bundle-yes">
+                <label for="va-select" >Select video + audio bundle or unknown format:</label>
+                <select class="form-select" id="va-select">
+                   ${options}
+                </select>
+            </div>`
         }
 
 
@@ -286,19 +353,20 @@ async function show_format_selection() {
 }
 
 async function advanced_prompt() {
+    const no_spellcheck = `spellcheck="false" autocorrect="off" autocapitalize="off" autocomplete="off"`
     const advanced_ui = `
     <h2>Advanced format selection:</h2>
     <div>
         <label for="advanced-format" class="form-label">yt-dlp format string:</label>
-        <input type="text" class="form-control" id="advanced-format">
+        <input type="text" class="form-control code-font" id="advanced-format" ${no_spellcheck}>
     </div>
     <div>
         <label for="advanced-format" class="form-label">yt-dlp format sort fields:</label>
-        <input type="text" class="form-control" id="advanced-sort">
+        <input type="text" class="form-control code-font" id="advanced-sort" ${no_spellcheck}>
     </div>
     <div>
         <label for="advanced-json" class="form-label">JSON of extra yt-dlp options:</label>
-        <textarea class="form-control" id="advanced-json"></textarea>
+        <textarea class="form-control code-font" id="advanced-json" ${no_spellcheck}></textarea>
     </div>
     <a href="https://github.com/yt-dlp/yt-dlp/#format-selection">Documentation</a>
     <button class="btn btn-primary" type="submit" id="advanced-confirm">Confirm</button>

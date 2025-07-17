@@ -31,6 +31,7 @@ body, html {
 body {
     display: flex;
     flex-direction: column;
+    padding: 1rem;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -59,4 +60,8 @@ body {
 
 .d-grid p, .d-grid h2 {
     margin: 0;
+}
+
+.code-font {
+    font-family: var(--bs-font-monospace), monospace;
 }
