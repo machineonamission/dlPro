@@ -1,4 +1,4 @@
-div {
+.container {
     /*floating window*/
     position: fixed;
     top: 50%;
@@ -18,9 +18,13 @@ div {
 }
 
 @media (prefers-color-scheme: dark) {
-    div {
+    .container {
         background-color: rgba(0, 0, 0, 0.75);
         box-shadow: 0.5rem 0.5rem 0.5rem rgba(0, 0, 0, 0.5);
+    }
+    .button {
+        /*filter: invert(1) grayscale(100%) brightness(200%);*/
+        color:#fff !important;
     }
 }
 
@@ -31,4 +35,22 @@ iframe {
     border: none;
     /* yes this is stupid, but if i dont, chrome fucks with it. soooooo */
     color-scheme: light dark !important;
+}
+
+.top-right {
+    position: absolute;
+    top: 1.25rem;
+    right: 1.25rem;
+    display:grid;
+    grid-gap: 1rem;
+    grid-auto-flow: column
+}
+
+.button {
+    padding: 0;
+    background: transparent;
+    color: #000;
+    border:0;
+    cursor: pointer;
+    box-sizing: content-box;
 }

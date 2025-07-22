@@ -1,48 +1,89 @@
-const host = document.createElement('div');
-document.body.appendChild(host);
-let shadow = host.attachShadow({mode: 'open'});
-let drl = document.createElement('meta');
-drl.setAttribute("name", "darkreader-lock")
-shadow.appendChild(drl)
+function init() {
+    close()
+    const host = document.createElement('div');
+    window.__dlpro_host = host;
+    document.body.appendChild(host);
+    let shadow = host.attachShadow({mode: 'open'});
+    let drl = document.createElement('meta');
+    drl.setAttribute("name", "darkreader-lock")
+    shadow.appendChild(drl)
 
-let sheet = new CSSStyleSheet()
-sheet.replaceSync(`
-:host {
-    all: initial;
-}`)
-shadow.adoptedStyleSheets.push(sheet)
+    let sheet = new CSSStyleSheet()
+    sheet.replaceSync(`
+    :host {
+        all: initial;
+    }`)
+    shadow.adoptedStyleSheets.push(sheet)
 
-// create iframe (this isnt just for aesthetics, it has its own CSP! yay workers!)
-const container = document.createElement("div");
-const iframe = document.createElement('iframe');
-const style = new CSSStyleSheet();
-fetch(chrome.runtime.getURL("content/content.css"))
-    .then(response => response.text())
-    .then(css => style.replace(css))
-    .then(css => shadow.adoptedStyleSheets.push(css))
-iframe.setAttribute('allowtransparency', "true")
-iframe.src = chrome.runtime.getURL("iframe/iframe.html");
-iframe.addEventListener('load', () => {
-    const iframe_channel = new MessageChannel();
-    const worker_channel = new MessageChannel();
-    // Send port2 to the iframe
-    iframe.contentWindow.postMessage("init", "*", [iframe_channel.port2, worker_channel.port2]);
-    const iframe_port = iframe_channel.port1;
-    const worker_port = worker_channel.port1;
-    // Use port1 in the container
-    iframe_port.onmessage = e => console.debug('content received message from iframe:', e.data);
-    iframe_port.postMessage({"type": "dlurl", "dlurl": location.href});
-    worker_port.onmessage = e => {
-        switch (e.data.type) {
-            case "request":
-                proxy_fetch(e.data.request).then(response => {
-                    worker_port.postMessage({"type": "response", "response": response}, [response.body]);
-                })
-                break
-        }
-    };
-});
+    // create iframe (this isnt just for aesthetics, it has its own CSP! yay workers!)
+    const container = document.createElement("div");
+    container.classList.add("container");
+    const iframe = document.createElement('iframe');
 
+    // set up close button
+    const top_right = document.createElement('div');
+    top_right.classList.add('top-right');
+    const close_button = document.createElement('button');
+    close_button.type = 'button';
+    close_button.classList.add('button');
+    close_button.innerHTML = `
+<svg xmlns="http://www.w3.org/2000/svg" width="2rem" height="2rem" fill="currentColor" class="bi bi-x-lg" viewBox="0 0 16 16">
+  <path d="M2.146 2.854a.5.5 0 1 1 .708-.708L8 7.293l5.146-5.147a.5.5 0 0 1 .708.708L8.707 8l5.147 5.146a.5.5 0 0 1-.708.708L8 8.707l-5.146 5.147a.5.5 0 0 1-.708-.708L7.293 8z"/>
+</svg>
+    `
+    const refresh_button = document.createElement('button');
+    refresh_button.type = 'button';
+    refresh_button.classList.add('button');
+    refresh_button.innerHTML = `
+    <svg xmlns="http://www.w3.org/2000/svg" width="2rem" height="2rem" fill="currentColor" class="bi bi-arrow-clockwise" viewBox="0 0 16 16">
+  <path fill-rule="evenodd" d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2z"/>
+  <path d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466"/>
+</svg>
+    `
+    top_right.appendChild(refresh_button)
+    top_right.appendChild(close_button)
+    container.appendChild(top_right)
 
-container.appendChild(iframe);
-shadow.appendChild(container);
+    close_button.addEventListener('click', close)
+    refresh_button.addEventListener('click', init)
+
+    const style = new CSSStyleSheet();
+    fetch(chrome.runtime.getURL("content/content.css"))
+        .then(response => response.text())
+        .then(css => style.replace(css))
+        .then(css => shadow.adoptedStyleSheets.push(css))
+    iframe.setAttribute('allowtransparency', "true")
+    iframe.src = chrome.runtime.getURL("iframe/iframe.html");
+    iframe.addEventListener('load', () => {
+        const iframe_channel = new MessageChannel();
+        const worker_channel = new MessageChannel();
+        // Send port2 to the iframe
+        iframe.contentWindow.postMessage("init", "*", [iframe_channel.port2, worker_channel.port2]);
+        const iframe_port = iframe_channel.port1;
+        const worker_port = worker_channel.port1;
+        // Use port1 in the container
+        iframe_port.onmessage = e => console.debug('content received message from iframe:', e.data);
+        iframe_port.postMessage({"type": "dlurl", "dlurl": location.href});
+        worker_port.onmessage = e => {
+            switch (e.data.type) {
+                case "request":
+                    proxy_fetch(e.data.request).then(response => {
+                        worker_port.postMessage({"type": "response", "response": response}, [response.body]);
+                    })
+                    break
+            }
+        };
+    });
+    container.appendChild(iframe);
+    shadow.appendChild(container);
+}
+
+function close() {
+    if (window.__dlpro_host) {
+        window.__dlpro_host.remove();
+        window.__dlpro_host = undefined;
+    }
+}
+
+init()
+

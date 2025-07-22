@@ -188,8 +188,7 @@ async function main() {
     // run the Python script to download the video
     // yes passing the url like this is hacky, but who cares
     await pyodide.runPythonAsync(
-        `downloadURL = """${dlurl}"""
-        ${await (await fetch("/worker/dl.py")).text()}`
+        `downloadURL = """${dlurl}"""\n${await (await fetch("/worker/dl.py")).text()}`
     );
     console.log("yt-dlp finished");
     // wait for any pending file receives to finish
