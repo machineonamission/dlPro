@@ -10,3 +10,7 @@ chrome.action.onClicked.addListener(async (tab) => {
 });
 
 // importScripts("/theme_handler.js")
+
+chrome.runtime.onInstalled.addListener(function(details) {
+//     TODO: open a welcome page
+});

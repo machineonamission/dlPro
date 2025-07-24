@@ -1,0 +1,28 @@
+@media (prefers-color-scheme: dark) {
+    #console {
+        border-color: #fff;
+    }
+
+    .light {
+        display: none !important
+    }
+}
+
+@media not (prefers-color-scheme: dark) {
+    .dark {
+        display: none !important;
+    }
+}
+
+.icon {
+    display: inline-block;
+    height: 1em;
+    vertical-align: middle;
+    position: relative;
+    margin-top: -7px;
+}
+
+.header {
+    text-align: center;
+    font-size:calc(1.625rem + 4.5vw);
+}
