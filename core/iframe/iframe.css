@@ -34,30 +34,6 @@ body {
     padding: 1rem;
 }
 
-@media (prefers-color-scheme: dark) {
-    #console {
-        border-color: #fff;
-    }
-
-    .light {
-        display: none !important
-    }
-}
-
-@media not (prefers-color-scheme: dark) {
-    .dark {
-        display: none !important;
-    }
-}
-
-.icon {
-    display: inline-block;
-    height: 1em;
-    vertical-align: middle;
-    position: relative;
-    margin-top: -7px;
-}
-
 .d-grid p, .d-grid h2 {
     margin: 0;
 }

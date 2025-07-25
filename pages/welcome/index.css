@@ -1,0 +1,8 @@
+.header {
+    text-align: center;
+    font-size:calc(1.625rem + 4.5vw);
+}
+
+li p {
+    margin: 0;
+}

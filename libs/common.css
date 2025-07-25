@@ -21,8 +21,7 @@
     position: relative;
     margin-top: -7px;
 }
-
-.header {
+.footer p {
+    margin: 0;
     text-align: center;
-    font-size:calc(1.625rem + 4.5vw);
 }

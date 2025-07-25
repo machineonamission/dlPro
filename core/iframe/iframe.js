@@ -95,7 +95,7 @@ function save_data(data, fileName) {
 
 async function main() {
     // spawn our worker
-    dlpro_worker = new Worker("/worker/worker.js");
+    dlpro_worker = new Worker("/core/worker/worker.js");
     // init 2 way channel
     const worker_channel = new MessageChannel();
     worker_port = worker_channel.port1;

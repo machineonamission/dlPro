@@ -9,13 +9,14 @@
   "name": "dlPro",
   "description": "yt-dlp, the most powerful web video downloader, now fully embedded in your browser.",
   "version": "0.0.1",
-  "options_page": "settings/settings.html",
+  "options_page": "/pages/settings/index.html",
   "action": {
     "default_title": "dlPro: click to download current page"
   },
   "permissions": [
     "scripting",
-    "cookies"
+    "cookies",
+    "storage"
   ],
   "host_permissions": [
     "*://*/*"
@@ -26,9 +27,9 @@
   "web_accessible_resources": [
     {
       "resources": [
-        "content/*",
+        "core/content/*",
         "logo/*",
-        "iframe/iframe.html"
+        "core/iframe/iframe.html"
       ],
       "matches": [
         "<all_urls>"

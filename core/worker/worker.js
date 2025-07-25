@@ -126,17 +126,17 @@ async function main() {
     console.log("worker started");
     importScripts(
         // patches for fuckass lib code
-        "/worker/webpack_patch.js",
-        "/worker/classic_worker_patch.js",
+        "/core//worker/webpack_patch.js",
+        "/core/worker/classic_worker_patch.js",
         // libs
         "/libs/pyodide/pyodide.js",
         "/libs/ffmpeg/ffmpeg.js",
         // ffmpeg wrapper
-        "/worker/ffmpeg-bridge.js",
+        "/core/worker/ffmpeg-bridge.js",
         // proxy requests
-        "/worker/xmlproxy_worker.js",
+        "/core/worker/xmlproxy_worker.js",
         // create a worker for streaming requests
-        "/worker/pyodide_streaming_worker_proxy.js",
+        "/core/worker/pyodide_streaming_worker_proxy.js",
     )
     // load Pyodide and import required things
     console.log("Loading Pyodide");
@@ -188,7 +188,7 @@ async function main() {
     // run the Python script to download the video
     // yes passing the url like this is hacky, but who cares
     await pyodide.runPythonAsync(
-        `downloadURL = """${dlurl}"""\n${await (await fetch("/worker/dl.py")).text()}`
+        `downloadURL = """${dlurl}"""\n${await (await fetch("/core/worker/dl.py")).text()}`
     );
     console.log("yt-dlp finished");
     // wait for any pending file receives to finish
