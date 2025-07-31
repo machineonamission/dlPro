@@ -11,54 +11,29 @@ console.log = function (...args) {
     }).join(' ') + "\n")
 };
 
-// ripped from https://github.com/kairi003/Get-cookies.txt-LOCALLY/blob/master/src/modules/cookie_format.mjs
-// Converts cookies from Chrome's JSON format to Netscape format (which is what yt-dlp expects).
-function jsonToNetscapeMapper(cookies) {
-    return cookies.map(
-        ({domain, expirationDate, path, secure, name, value}) => {
-            const includeSubDomain = !!domain?.startsWith('.');
-            const expiry = expirationDate?.toFixed() ?? '0';
-            const arr = [domain, includeSubDomain, path, secure, expiry, name, value];
-            return arr.map((v) =>
-                typeof v === 'boolean' ? v.toString().toUpperCase() : v,
-            );
-        },
-    );
-}
-
-function netscapeSerializer(cookies) {
-    const netscapeTable = jsonToNetscapeMapper(cookies);
-    const text = [
-        '# Netscape HTTP Cookie File',
-        '# http://curl.haxx.se/rfc/cookie_spec.html',
-        '# This is a generated file!  Do not edit.',
-        '',
-        ...netscapeTable.map((row) => row.join('\t')),
-        '', // Add a new line at the end
-    ].join('\n');
-    return text;
-}
-
 let content_port;
 let content_to_worker_port;
-let dlurl;
+let dlurl = promise_init();
 
 function content_port_onmessage(event) {
     console.debug("iframe received message from content", event.data)
     switch (event.data.type) {
         case "dlurl":
             // this is a request for the current url, send it
-            dlurl = event.data.dlurl;
-            if (dlurl_promise) {
-                dlurl_promise(dlurl)
-            }
+            dlurl.resolve(event.data.dlurl);
             break;
+        case "cookies":
+            // console.log("iframe got cookies from content", event.data.cookies)
+            cookies.resolve(event.data.cookies)
+            break
     }
 }
 
+let cookies = promise_init();
+
 // receive port from content script
 window.addEventListener('message', event => {
-    if (event.data === "init") {
+    if (event.data === "content_init") {
         console.debug("iframe received init message");
         content_port = event.ports[0];
         content_to_worker_port = event.ports[1];
@@ -124,20 +99,8 @@ async function main() {
                 break;
         }
     }
-    // wait for dlurl
-    await new Promise(resolve => {
-        if (dlurl) {
-            resolve(dlurl)
-        } else {
-            dlurl_promise = resolve
-        }
-    })
     // send to worker
-    worker_port.postMessage({type: "dlurl", dlurl: dlurl});
+    worker_port.postMessage({type: "dlurl", dlurl: await dlurl.promise});
+    worker_port.postMessage({type: "cookies", "cookies": await cookies.promise});
     // gather cookies (cannot be done from a worker, and needs dlurl)
-    const cookies = await chrome.cookies.getAll({url: dlurl});
-    // serialize to a format yt-dlp expects
-    const sCookies = netscapeSerializer(cookies);
-    // send cookies
-    worker_port.postMessage({type: "cookies", cookies: sCookies});
 }

@@ -1,5 +1,8 @@
 function init() {
     close()
+
+    let cookies_prom = chrome.runtime.sendMessage({"type": "cookies", "url": location.href})
+
     const host = document.createElement('div');
     window.__dlpro_host = host;
     document.body.appendChild(host);
@@ -76,11 +79,16 @@ function init() {
         const iframe_channel = new MessageChannel();
         const worker_channel = new MessageChannel();
         // Send port2 to the iframe
-        iframe.contentWindow.postMessage("init", "*", [iframe_channel.port2, worker_channel.port2]);
+        iframe.contentWindow.postMessage("content_init", "*", [iframe_channel.port2, worker_channel.port2]);
         const iframe_port = iframe_channel.port1;
         const worker_port = worker_channel.port1;
         // Use port1 in the container
         iframe_port.onmessage = e => console.debug('content received message from iframe:', e.data);
+        cookies_prom.then(c => {
+            // console.log("content got cookies from background script", c);
+            iframe_port.postMessage({"type": "cookies", "cookies": c});
+            // window.__dlpro_cookies = null;
+        })
         iframe_port.postMessage({"type": "dlurl", "dlurl": location.href});
         worker_port.onmessage = e => {
             switch (e.data.type) {

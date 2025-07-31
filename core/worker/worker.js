@@ -1,3 +1,4 @@
+importScripts("/promise_utils.js");
 // patch console.log to output to the UI
 const originalConsoleLog = console.log;
 console.log = function (...args) {
@@ -14,27 +15,22 @@ console.log = function (...args) {
     });
 };
 
-let cookies;
-let dlurl;
-
 // async bullshittery
-let cookie_promise;
-let dlurl_promise;
-let format_promise;
+let cookies = promise_init();
+let dlurl = promise_init();
+let format = promise_init();
 
 let iframe_port;
 let content_port;
 
 
 // ask iframe to ask user for format, returns a promise that resolves when it returns
-function ask_user_for_format(info_dict) {
-    return new Promise((resolve, reject) => {
-        format_promise = resolve;
-        iframe_port.postMessage({
-            type: "format",
-            info_dict: info_dict
-        });
-    })
+async function ask_user_for_format(info_dict) {
+    iframe_port.postMessage({
+        type: "format",
+        info_dict: info_dict
+    });
+    return await format.promise;
 }
 
 function iframe_port_onmessage(event) {
@@ -44,20 +40,14 @@ function iframe_port_onmessage(event) {
     switch (message.type) {
         // when data is received, save it and resolve any waiting promises.
         case "cookies":
-            cookies = message.cookies;
-            if (cookie_promise) {
-                cookie_promise(cookies);
-            }
+            // console.log("worker got cookies from iframe");
+            cookies.resolve(message.cookies);
             break;
         case "dlurl":
-            dlurl = message.dlurl;
-            if (dlurl_promise) {
-                dlurl_promise(dlurl);
-            }
+            dlurl.resolve(message.dlurl);
             break;
         case "format":
-            format_promise(message.format);
-            format_promise = null;
+            format.resolve(message.format);
             break;
     }
 }
@@ -68,8 +58,7 @@ function content_port_onmessage(event) {
     switch (message.type) {
         // all we care about from content is the proxy. forward to any awaiting promises.
         case "response":
-            response_resolve(pyodide.toPy(message.response));
-            response_resolve = null;
+            response.resolve(pyodide.toPy(message.response));
             break
     }
 }
@@ -126,7 +115,7 @@ async function main() {
     console.log("worker started");
     importScripts(
         // patches for fuckass lib code
-        "/core//worker/webpack_patch.js",
+        "/core/worker/webpack_patch.js",
         "/core/worker/classic_worker_patch.js",
         // libs
         "/libs/pyodide/pyodide.js",
@@ -166,29 +155,14 @@ async function main() {
     )
 
     pyodide.FS.mkdir("/dl")
-    // wait to receive cookies if we havent
-    await new Promise((resolve, reject) => {
-        if (cookies) {
-            resolve(cookies);
-        } else {
-            cookie_promise = resolve;
-        }
-    })
     // pass cookie file
-    pyodide.FS.writeFile('/cookies.txt', cookies);
+    pyodide.FS.writeFile('/cookies.txt', await cookies.promise);
     // wait to receive the download URL if we havent
-    await new Promise((resolve, reject) => {
-        if (dlurl) {
-            resolve(dlurl);
-        } else {
-            dlurl_promise = resolve;
-        }
-    })
     console.log("running yt-dlp")
     // run the Python script to download the video
     // yes passing the url like this is hacky, but who cares
     await pyodide.runPythonAsync(
-        `downloadURL = """${dlurl}"""\n${await (await fetch("/core/worker/dl.py")).text()}`
+        `downloadURL = """${await dlurl.promise}"""\n${await (await fetch("/core/worker/dl.py")).text()}`
     );
     console.log("yt-dlp finished");
     // wait for any pending file receives to finish
