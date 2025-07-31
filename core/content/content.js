@@ -8,12 +8,20 @@ function init() {
     drl.setAttribute("name", "darkreader-lock")
     shadow.appendChild(drl)
 
-    let sheet = new CSSStyleSheet()
-    sheet.replaceSync(`
+    // CAUSES A FIREFOX BUG https://bugzilla.mozilla.org/show_bug.cgi?id=1766909
+    // let sheet = new CSSStyleSheet()
+    // sheet.replaceSync(`
+    // :host {
+    //     all: initial;
+    // }`)
+    // shadow.adoptedStyleSheets.push(sheet)
+
+    const sheet = document.createElement("style")
+    sheet.innerHTML = `
     :host {
         all: initial;
-    }`)
-    shadow.adoptedStyleSheets.push(sheet)
+    }`;
+    shadow.appendChild(sheet);
 
     // create iframe (this isnt just for aesthetics, it has its own CSP! yay workers!)
     const container = document.createElement("div");
@@ -60,8 +68,8 @@ function init() {
     const style = new CSSStyleSheet();
     fetch(chrome.runtime.getURL("/core/content/content.css"))
         .then(response => response.text())
-        .then(css => style.replace(css))
-        .then(css => shadow.adoptedStyleSheets.push(css))
+        // .then(css => style.replace(css))
+        .then(css => sheet.innerHTML += css)
     iframe.setAttribute('allowtransparency', "true")
     iframe.src = chrome.runtime.getURL("/core/iframe/iframe.html");
     iframe.addEventListener('load', () => {
@@ -96,5 +104,5 @@ function close() {
     }
 }
 
-init()
+init().catch(console.error)
 
