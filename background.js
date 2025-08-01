@@ -71,6 +71,10 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 chrome.runtime.onInstalled.addListener(function (details) {
     if (details.reason === chrome.runtime.OnInstalledReason.INSTALL) {
         chrome.tabs.create({url: chrome.runtime.getURL("/pages/welcome/index.html")});
-        chrome.tabs.create({url: chrome.runtime.getURL("/pages/agreement/index.html")});
+         chrome.storage.local.get({"agree": false}).then(({agree}) => {
+            if (!agree) {
+                chrome.tabs.create({url: chrome.runtime.getURL("/pages/agreement/index.html")});
+            }
+         });
     }
 });
