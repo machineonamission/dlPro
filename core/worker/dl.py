@@ -8,7 +8,12 @@ sys.path.insert(0, "/modules")
 import pyodide_http_fork as pyodide_http
 
 # patch urllib to use browser
-pyodide_http.patch_all()
+pyodide_http.patch_ssl()
+pyodide_http.patch_urllib()
+# print(pyodide_http)
+# print(pyodide_http.__version__)
+# import urllib.request
+# print(urllib.request.urlopen("test"))
 
 from pyodide.ffi import run_sync
 # patch yt-dlp to not call subprocesses, but to call ffmpeg.wasm
@@ -61,7 +66,7 @@ ydl_opts = {
     "cookiefile": "/cookies.txt",
     # you need this or else yt-dlp leaves out info from the info_dict, which breaks changing formats
     "format": "all",
-    # "verbose": True
+    "verbose": True
 }
 
 filename = None

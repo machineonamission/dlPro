@@ -150,6 +150,7 @@ async function main() {
         ["__init__.py", "_core.py", "_requests.py", "_streaming.py", "_urllib.py"].map(async (file) => {
             let runtime = `/libs/pyodide_http_fork/pyodide_http/${file}`;
             let f = await (await fetch(runtime)).text();
+            // f = f.replaceAll("\r\n", "\n")
             pyodide.FS.writeFile(`/modules/pyodide_http_fork/${file}`, f);
         })
     )
