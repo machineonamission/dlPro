@@ -1,10 +1,10 @@
-import asyncio
-import ssl
+# import asyncio
+# import ssl
 import json
-import traceback
-import sys
-
-sys.path.insert(0, "/modules")
+# import traceback
+# import sys
+#
+# sys.path.insert(0, "/modules")
 import pyodide_http_fork as pyodide_http
 
 # patch urllib to use browser
@@ -21,7 +21,7 @@ from yt_dlp.utils import _utils
 from js import ffmpegbridge, Object, ask_user_for_format
 from pyodide.ffi import to_js
 
-import pyodide.ffi
+# import pyodide.ffi
 
 # run_sync_orig = pyodide.ffi.run_sync
 

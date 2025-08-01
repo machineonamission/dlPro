@@ -24,7 +24,6 @@ let iframe_port;
 let content_port;
 
 function firefox_jspi_warning() {
-    console.log("WAGA BABA BOBO")
     content_port.postMessage({
         type: "firefox_jspi_warning",
     });
@@ -112,7 +111,6 @@ function pythonouthandler(byte, mode) {
     }
 }
 
-
 // ffmpeg-bridge needs access to the pyodide filesystem, make it global
 let pyodide;
 
@@ -135,32 +133,55 @@ async function main() {
         "/core/worker/pyodide_streaming_worker_proxy.js",
     )
     // load Pyodide and import required things
-    console.log("Loading Pyodide");
+    console.log("Loading Pyodide and yt-dlp");
     pyodide = await loadPyodide({
-        indexURL: "/libs/pyodide/"
+        indexURL: "/libs/pyodide/",
+        stdLibURL: "/libs/pyodide/python_stdlib.zip.pyodide",
+        packages: [
+            // "ssl",
+            "/libs/pyodide/yt_dlp-2025.6.30-py3-none-any.whl",
+            // "/libs/pyodide/openssl-1.1.1w.zip.pyodide",
+        ]
     });
     // set up our stdin/err handlers
     pyodide.setStdin({error: true});
     pyodide.setStdout({raw: (byte) => pythonouthandler(byte, "stdout")});
     pyodide.setStderr({raw: (byte) => pythonouthandler(byte, "stderr")});
-    // load easy libs
-    await pyodide.loadPackage("/libs/pyodide/yt_dlp-2025.6.30-py3-none-any.whl")
-    await pyodide.loadPackage("ssl");
 
-    console.log("loading pyodide_http_fork")
-    pyodide.FS.mkdir("/modules")
-    pyodide.FS.mkdir("/modules/pyodide_http_fork")
-    // yes this is horrible, but theres no other way to import a directory in pyodide, and pyodide_http is so heavily
-    // modified by my fork that i need it to be in a separate directory so i can use submodules and not worry about
-    // building the thing
-    await Promise.all(
-        ["__init__.py", "_core.py", "_requests.py", "_streaming.py", "_urllib.py"].map(async (file) => {
-            let runtime = `/libs/pyodide_http_fork/pyodide_http/${file}`;
-            let f = await (await fetch(runtime)).text();
-            // f = f.replaceAll("\r\n", "\n")
-            pyodide.FS.writeFile(`/modules/pyodide_http_fork/${file}`, f);
-        })
-    )
+    async function load_ssl() {
+        // edge doesn't allow .zip, so we have to manually load in the openssl files
+        pyodide.FS.mkdirTree("/usr/lib");
+        await Promise.all(
+            ["libcrypto.so", "libssl.so"].map(async (file) => {
+                let runtime = `/libs/pyodide/openssl-1.1.1w/${file}`;
+                let f = await (await fetch(runtime)).arrayBuffer();
+                // f = f.replaceAll("\r\n", "\n")
+                pyodide.FS.writeFile(`/usr/lib/${file}`, new Uint8Array(f));
+            })
+        )
+        // then load the ssl wheel directly
+        // yes it'd be nice to do this during the pyodide load, but it depends on openssl which we need the pyodide fs
+        // to exist before we can load
+        await pyodide.loadPackage("/libs/pyodide/ssl-1.0.0-cp312-cp312-pyodide_2024_0_wasm32.whl");
+    }
+
+    async function load_pyodide_http_fork() {
+        pyodide.FS.mkdirTree("/lib/python3.12/site-packages/pyodide_http_fork")
+        // yes this is horrible, but theres no other way to import a directory in pyodide, and pyodide_http is so heavily
+        // modified by my fork that i need it to be in a separate directory so i can use submodules and not worry about
+        // building the thing
+        await Promise.all(
+            ["__init__.py", "_core.py", "_requests.py", "_streaming.py", "_urllib.py"].map(async (file) => {
+                let runtime = `/libs/pyodide_http_fork/pyodide_http/${file}`;
+                let f = await (await fetch(runtime)).text();
+                // f = f.replaceAll("\r\n", "\n")
+                pyodide.FS.writeFile(`/lib/python3.12/site-packages/pyodide_http_fork/${file}`, f);
+            })
+        )
+    }
+
+    console.log("loading openssl, ssl, and pyodide_http_fork");
+    await Promise.all([load_ssl(), load_pyodide_http_fork()])
 
     pyodide.FS.mkdir("/dl")
     // pass cookie file

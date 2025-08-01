@@ -116,5 +116,5 @@ function close() {
     }
 }
 
-init().catch(console.error)
+init()
 
