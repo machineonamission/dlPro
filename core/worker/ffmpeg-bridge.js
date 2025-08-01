@@ -123,10 +123,16 @@ async function load() {
     console.log("loading ffmpeg");
     // load ffmpeg wasm
     ffmpeg = new FFmpegWASM.FFmpeg();
+    // works in chrome, but not firefox
+    // await ffmpeg.load({
+    //     coreURL: geturl("/libs/ffmpeg/mt/ffmpeg-core.js"),
+    //     wasmURL: geturl("/libs/ffmpeg/mt/ffmpeg-core.wasm"),
+    //     workerURL: geturl("/libs/ffmpeg/mt/ffmpeg-core.worker.js"),
+    //     classWorkerURL: geturl("/libs/ffmpeg/814.ffmpeg.js"),
+    // });
     await ffmpeg.load({
-        coreURL: geturl("/libs/ffmpeg/mt/ffmpeg-core.js"),
-        wasmURL: geturl("/libs/ffmpeg/mt/ffmpeg-core.wasm"),
-        workerURL: geturl("/libs/ffmpeg/mt/ffmpeg-core.worker.js"),
+        coreURL: geturl("/libs/ffmpeg/st/ffmpeg-core.js"),
+        wasmURL: geturl("/libs/ffmpeg/st/ffmpeg-core.wasm"),
         classWorkerURL: geturl("/libs/ffmpeg/814.ffmpeg.js"),
     });
     await ffmpeg.createDir("/dl")

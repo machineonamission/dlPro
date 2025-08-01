@@ -54,8 +54,15 @@ async function cookies(url) {
 }
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-    if (request.type === "cookies") {
-        cookies(request.url).then(sendResponse);
+    switch (request.type) {
+        case "cookies":
+            // return cookies for the current URL
+            cookies(request.url).then(sendResponse);
+            break;
+        case "firefox_jspi_warning":
+            chrome.tabs.create({url: chrome.runtime.getURL("/pages/jspi/index.html")});
+            break
+
     }
     // async return
     return true;

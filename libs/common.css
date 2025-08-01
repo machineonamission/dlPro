@@ -21,7 +21,17 @@
     position: relative;
     margin-top: -7px;
 }
+
 .footer p {
     margin: 0;
     text-align: center;
+}
+
+.header {
+    text-align: center;
+    font-size: calc(1.625rem + 4.5vw);
+}
+
+h1, h2, h3, h4, h5, h6, .h1, .h2, .h3, .h4, .h5, .h6 {
+    font-weight: bold !important;
 }

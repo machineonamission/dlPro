@@ -91,11 +91,15 @@ function init() {
         })
         iframe_port.postMessage({"type": "dlurl", "dlurl": location.href});
         worker_port.onmessage = e => {
+            console.debug("content received message from worker", e.data);
             switch (e.data.type) {
                 case "request":
                     proxy_fetch(e.data.request).then(response => {
                         worker_port.postMessage({"type": "response", "response": response}, [response.body]);
                     })
+                    break
+                case "firefox_jspi_warning":
+                    chrome.runtime.sendMessage({"type": "firefox_jspi_warning"})
                     break
             }
         };

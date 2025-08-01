@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>JSPI Error - dlPro</title>
+    <meta name="darkreader-lock">
+    <link rel="stylesheet" href="index.css">
+    <link rel="stylesheet" href="/libs/common.css">
+    <link rel="stylesheet" href="/libs/bootstrap.min.css">
+    <link rel="stylesheet" href="/libs/bootstrap-auto-dark-patch.css">
+
+    <!--    <script src="index.js"></script>-->
+    <script src="/pages/common.js"></script>
+</head>
+<body>
+<div class="container">
+    <h1 class="header"><img src="/logo/light/logo.svg" alt="" class="icon light"/><img src="/logo/dark/logo.svg" alt=""
+                                                                                       class="icon dark"/> dlPro</h1>
+    <h1 class="text-center">JSPI Error</h1>
+    <h2>Uh oh!</h2>
+    <p>Looks like your browser doesn't have <a href="https://v8.dev/blog/jspi">WebAssembly JavaScript Promise
+        Integration</a> available/enabled. dlPro depends on this API to run 2 essential pieces of its infrastructure:
+        request proxying and FFmpeg calling.</p>
+    <h2>Don't worry!</h2>
+    <p>If you're on a recent version of Firefox, you can fix this! The feature exists, it just needs to be enabled!</p>
+    <h2>How to enable on Firefox</h2>
+    <ol>
+        <li>
+            <p>Go to <code>about:config</code> in your browser's address bar.</p>
+            <img src="img.png" alt="" style="width: 30em">
+        </li>
+        <li>
+            <p>Search for <code>javascript.options.wasm_js_promise_integration</code>.</p>
+            <img src="img_1.png" alt="" style="width: 30em">
+        </li>
+        <li>
+            <p>If it says <code>false</code>, click the ⇄ (toggle) icon so it says <code>true</code>.</p>
+            <img src="img_2.png" alt="" style="width: 30em">
+            <br>
+            <img src="img_3.png" alt="" style="width: 30em">
+        </li>
+        <li>
+            Restart your browser (make sure to close ALL Firefox windows, not just the tab) and try again!
+        </li>
+    </ol>
+    <h2>Other browsers</h2>
+    <p>If your browser is Firefox/Quantum/Gecko based (Firefox, Tor, Waterfox, etc), follow the Firefox
+        instructions.</p>
+    <p>If your browser is Chrome/Chromium based (Chrome, Edge, Opera, Brave, Vivaldi, etc.) JSPI should already be
+        enabled. Make sure your browser is up-to-date.
+        If you are running the latest version, <a href="https://github.com/machineonamission/dlpro/issues/new">Submit a
+            bug report on the GitHub.</a></p>
+    <p>If your browser is based on else, dlPro doesn't have first-class support for your browser, but you can
+        <a href="https://github.com/machineonamission/dlpro/issues/new">submit a bug report on the GitHub</a> anyways
+        (or just switch to Firefox/Chromium :p)</p>
+    <div class="footer small text-muted">
+        <hr>
+        <p>
+            <img src="/logo/moam_just_logo.svg" class="icon" alt="">
+            Created by <a href="https://machineonamission.me/">Machine on a Mission</a>
+        </p>
+        <p>
+            <a href="https://github.com/machineonamission/dlpro">GitHub (Source Code, Bug Reports)</a>
+        </p>
+        <p>v<span id="version"></span></p>
+    </div>
+</div>
+
+</body>
+</html>

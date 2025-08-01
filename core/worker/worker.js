@@ -23,6 +23,13 @@ let format = promise_init();
 let iframe_port;
 let content_port;
 
+function firefox_jspi_warning() {
+    console.log("WAGA BABA BOBO")
+    content_port.postMessage({
+        type: "firefox_jspi_warning",
+    });
+}
+
 
 // ask iframe to ask user for format, returns a promise that resolves when it returns
 async function ask_user_for_format(info_dict) {
