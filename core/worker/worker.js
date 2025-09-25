@@ -139,7 +139,7 @@ async function main() {
         stdLibURL: "/libs/pyodide/python_stdlib.zip.pyodide",
         packages: [
             // "ssl",
-            "/libs/pyodide/yt_dlp-2025.8.27-py3-none-any.whl",
+            "/libs/pyodide/yt_dlp-2025.9.23-py3-none-any.whl",
             // "/libs/pyodide/openssl-1.1.1w.zip.pyodide",
         ]
     });
