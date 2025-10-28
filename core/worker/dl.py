@@ -57,11 +57,13 @@ if importlib.util.find_spec("yt_dlp.extractor.youtube.jsc"):
 
         def _run_deno(self, stdin, options) -> str:
             print("Requesting JS challenge handler...")
-            return run_sync_wrapper(
+            res = run_sync_wrapper(
                 request_js(
                     stdin
                 )
             )
+            print("JS challenge result received.")
+            return res
 
         def _npm_packages_cached(self, stdin: str) -> bool:
             return True
