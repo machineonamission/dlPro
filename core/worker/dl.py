@@ -57,7 +57,7 @@ class dlProJCP(DenoJCP):
         return True
 
     def _run_deno(self, stdin, options) -> str:
-        print("DLPRO DENO CALLED")
+        print("Requesting JS challenge handler...")
         return run_sync_wrapper(
             request_js(
                 stdin

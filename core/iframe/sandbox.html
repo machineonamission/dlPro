@@ -2,16 +2,17 @@
 <html>
 <body>
 <script type="module">
-    window.addEventListener("message", e => {
+    window.addEventListener("message", async e => {
+        console.log("Hello from sandbox!");
+        let iframe_port = e.ports[0];
         const code = e.data;
         const logs = [];
         let url;
-        debugger
         try {
-            const origlog = console.log;
+            const origlog = console.debug;
             // intercept logs
             const log = (...args) => {
-                origlog(...args);
+                origlog("[dlPro sandbox]", ...args);
                 logs.push(args.join(" "))
             };
             console.log = log;
@@ -19,12 +20,12 @@
             console.error = log;
 
             // run AS A MODULE
-            const blob = new Blob([code], { type: 'text/javascript' })
+            const blob = new Blob([code], {type: 'text/javascript'})
             url = URL.createObjectURL(blob)
-            import(url)
+            await import(url)
         } finally {
             URL.revokeObjectURL(url)
-            e.source.postMessage(logs.join("\n"));
+            iframe_port.postMessage(logs.join("\n"));
         }
     });
 </script>
