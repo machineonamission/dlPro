@@ -26,8 +26,7 @@
     "*://*/*"
   ],
   "content_security_policy": {
-    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self';",
-    "sandbox": "sandbox allow-scripts; script-src 'self' 'unsafe-eval' 'unsafe-inline' blob: https://esm.sh;"
+    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self';"
   },
   "web_accessible_resources": [
     {
@@ -35,7 +34,7 @@
         "core/content/*",
         "logo/*",
         "core/iframe/iframe.html",
-        "core/iframe/sandbox.html"
+        "core/sandbox/sandbox.html"
       ],
       "matches": [
         "<all_urls>"
@@ -43,7 +42,6 @@
     }
   ],
   "background": {
-    "service_worker": "background.js",
     "scripts": ["background.js"]
   },
   "icons": {
@@ -52,8 +50,5 @@
     "48":  "logo/shadow/logo-48.png",
     "64":  "logo/shadow/logo-64.png",
     "128":  "logo/shadow/logo-128.png"
-  },
-  "sandbox": {
-    "pages": ["core/iframe/sandbox.html"]
   }
 }

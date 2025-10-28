@@ -35,7 +35,7 @@
         "core/content/*",
         "logo/*",
         "core/iframe/iframe.html",
-        "core/iframe/sandbox.html"
+        "core/sandbox/sandbox.html"
       ],
       "matches": [
         "<all_urls>"
@@ -53,6 +53,6 @@
     "128":  "logo/shadow/logo-128.png"
   },
   "sandbox": {
-    "pages": ["core/iframe/sandbox.html"]
+    "pages": ["core/sandbox/sandbox.html"]
   }
 }
