@@ -149,25 +149,37 @@ async function main() {
     // load Pyodide and import required things
     console.log("Loading Pyodide and yt-dlp");
     let pypiindex = await (await fetch("https://pypi.org/pypi/yt-dlp/json")).json();
-    console.log(pypiindex)
+    console.debug(pypiindex)
+    let latestpypi = pypiindex.info.version.split(".").map(Number);
+    let stored = [2025, 10, 22];
     let ytdlpurl = null;
-    for (const u of pypiindex.urls) {
-        if (u.packagetype === "bdist_wheel") {
-            ytdlpurl = u.url;
-            break
+
+    if (latestpypi[0] > stored[0] || latestpypi[1] > stored[1] || latestpypi[2] > stored[2]) {
+        // pypi has later version, download and use
+        for (const u of pypiindex.urls) {
+            if (u.packagetype === "bdist_wheel") {
+                ytdlpurl = u.url;
+                break
+            }
         }
+        if (ytdlpurl === null) {
+            throw new Error("Unable to get pypi url");
+        }
+    } else {
+        // if our version equals or is greater than pypi, dont use pypi
+        // current this is because dlPro implemented js challenges and yt-dlp master hasnt, but also we can have some
+        // kind of defaulting behavior
+        ytdlpurl = "/libs/pyodide/yt_dlp-2025.10.22-py3-none-any.whl";
     }
-    if (ytdlpurl === null) {
-        throw new Error("Unable to get pypi url");
-    }
+    console.log("using yt-dlp from ", ytdlpurl)
     pyodide = await loadPyodide({
         indexURL: "/libs/pyodide/",
         stdLibURL: "/libs/pyodide/python_stdlib.zip.pyodide",
         packages: [
             // "ssl",
-            // ytdlpurl
+            ytdlpurl
             // "https://files.pythonhosted.org/packages/eb/27/d57bf59a3e42613c200fc3e3ff43febadb9355c27e92fef7612a8335965b/yt_dlp-2025.10.25.232842.dev0-py3-none-any.whl"
-            "/libs/pyodide/yt_dlp-2025.10.22-py3-none-any.whl",
+            // "/libs/pyodide/yt_dlp-2025.10.22-py3-none-any.whl",
             // "/libs/pyodide/openssl-1.1.1w.zip.pyodide",
         ]
     });

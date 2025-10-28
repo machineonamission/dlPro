@@ -1,6 +1,7 @@
 # import asyncio
 # import ssl
 import json
+import importlib
 # import traceback
 # import sys
 #
@@ -32,55 +33,58 @@ def run_sync_wrapper(func):
     except RuntimeError as e:
         from js import firefox_jspi_warning
         firefox_jspi_warning()
-        print("WE ARE TRYING TO SEND THE FUCKING WARNING")
+        print("Sending Firefox JSPI warning")
         # raise
 
 
 # pyodide.ffi.run_sync = run_sync_wrapper
-# just something to get yt-dlp to leave me alone
-deno_version = """deno 2.5.4 (stable, release, x86_64-pc-windows-msvc)
-v8 14.0.365.5-rusty
-typescript 5.9.2"""
 
-from yt_dlp.extractor.youtube.jsc.provider import (
-    register_provider,
-    register_preference,
-)
-from yt_dlp.extractor.youtube.jsc._builtin.deno import DenoJCP
+if importlib.util.find_spec("yt_dlp.extractor.youtube.jsc"):
+    print("yt-dlp supports JS challenges. adding dlPro's JSC handler.")
+    from yt_dlp.extractor.youtube.jsc.provider import (
+        register_provider,
+        register_preference,
+    )
+    from yt_dlp.extractor.youtube.jsc._builtin.deno import DenoJCP
 
+    @register_provider
+    class dlProJCP(DenoJCP):
+        PROVIDER_NAME = 'dlPro'
+        JS_RUNTIME_NAME = 'dlPro'
 
-@register_provider
-class dlProJCP(DenoJCP):
-    PROVIDER_NAME = 'dlPro'
-    JS_RUNTIME_NAME = 'dlPro'
-    def is_available(self, /) -> bool:
-        return True
+        def is_available(self, /) -> bool:
+            return True
 
-    def _run_deno(self, stdin, options) -> str:
-        print("Requesting JS challenge handler...")
-        return run_sync_wrapper(
-            request_js(
-                stdin
+        def _run_deno(self, stdin, options) -> str:
+            print("Requesting JS challenge handler...")
+            return run_sync_wrapper(
+                request_js(
+                    stdin
+                )
             )
-        )
 
-#     def _npm_packages_cached(self, stdin: str) -> bool:
-#         return True
+        def _npm_packages_cached(self, stdin: str) -> bool:
+            return True
 
+    @register_preference(dlProJCP)
+    def preference(*_) -> int:
+        return 99999999999999999
+else:
+    print("WARNING: used version of yt-dlp does NOT support JS challenges.")
 
-@register_preference(dlProJCP)
-def preference(*_) -> int:
-    return 99999999999999999
-
+# from yt_dlp.postprocessor.ffmpeg import FFmpegPostProcessor
+#
+# class dlProFFmpegWASMPP(FFmpegPostProcessor, plugin_name='dlPro'):
+#
 
 # hijacks yt-dlp's attempts to run ffmpeg/ffprobe, and instead runs the ffmpeg.wasm bridge
 def popen_run(cls, *args, **kwargs):
-    # we dont need to actually call ffmpeg to just get basic static info.
-    if args[0] == ["ffmpeg", "-bsfs"] or args[0] == ["ffprobe", "-bsfs"]:
-        return json.loads(
-            """["Bitstream filters:aac_adtstoascav1_frame_mergeav1_frame_splitav1_metadatachompdump_extradca_coredv_error_markereac3_coreextract_extradatafilter_unitsh264_metadatah264_mp4toannexbh264_redundant_ppshapqa_extracthevc_metadatahevc_mp4toannexbimxdumpmjpeg2jpegmjpegadumpmp3decompmpeg2_metadatampeg4_unpack_bframesmov2textsubnoisenullopus_metadatapcm_rechunkpgs_frame_mergeprores_metadataremove_extrasettstext2movsubtrace_headerstruehd_corevp9_metadatavp9_raw_reordervp9_superframevp9_superframe_split","ffmpeg version 5.1.4 Copyright (c) 2000-2023 the FFmpeg developers  built with emcc (Emscripten gcc/clang-like replacement + linker emulating GNU ld) 3.1.40 (5c27e79dd0a9c4e27ef2326841698cdd4f6b5784)  configuration: --target-os=none --arch=x86_32 --enable-cross-compile --disable-asm --disable-stripping --disable-programs --disable-doc --disable-debug --disable-runtime-cpudetect --disable-autodetect --nm=emnm --ar=emar --ranlib=emranlib --cc=emcc --cxx=em++ --objcc=emcc --dep-cc=emcc --extra-cflags='-I/opt/include -O3 -msimd128' --extra-cxxflags='-I/opt/include -O3 -msimd128' --disable-pthreads --disable-w32threads --disable-os2threads --enable-gpl --enable-libx264 --enable-libx265 --enable-libvpx --enable-libmp3lame --enable-libtheora --enable-libvorbis --enable-libopus --enable-zlib --enable-libwebp --enable-libfreetype --enable-libfribidi --enable-libass --enable-libzimg  libavutil      57. 28.100 / 57. 28.100  libavcodec     59. 37.100 / 59. 37.100  libavformat    59. 27.100 / 59. 27.100  libavdevice    59.  7.100 / 59.  7.100  libavfilter     8. 44.100 /  8. 44.100  libswscale      6.  7.100 /  6.  7.100  libswresample   4.  7.100 /  4.  7.100  libpostproc    56.  6.100 / 56.  6.100Aborted()",0]"""
-        )
     if args[0][0] in ["ffmpeg", "ffprobe"]:
+        # we dont need to actually call ffmpeg to just get basic static info.
+        if args[0][1] == "-bsfs":
+            return json.loads(
+                """["Bitstream filters:aac_adtstoascav1_frame_mergeav1_frame_splitav1_metadatachompdump_extradca_coredv_error_markereac3_coreextract_extradatafilter_unitsh264_metadatah264_mp4toannexbh264_redundant_ppshapqa_extracthevc_metadatahevc_mp4toannexbimxdumpmjpeg2jpegmjpegadumpmp3decompmpeg2_metadatampeg4_unpack_bframesmov2textsubnoisenullopus_metadatapcm_rechunkpgs_frame_mergeprores_metadataremove_extrasettstext2movsubtrace_headerstruehd_corevp9_metadatavp9_raw_reordervp9_superframevp9_superframe_split","ffmpeg version 5.1.4 Copyright (c) 2000-2023 the FFmpeg developers  built with emcc (Emscripten gcc/clang-like replacement + linker emulating GNU ld) 3.1.40 (5c27e79dd0a9c4e27ef2326841698cdd4f6b5784)  configuration: --target-os=none --arch=x86_32 --enable-cross-compile --disable-asm --disable-stripping --disable-programs --disable-doc --disable-debug --disable-runtime-cpudetect --disable-autodetect --nm=emnm --ar=emar --ranlib=emranlib --cc=emcc --cxx=em++ --objcc=emcc --dep-cc=emcc --extra-cflags='-I/opt/include -O3 -msimd128' --extra-cxxflags='-I/opt/include -O3 -msimd128' --disable-pthreads --disable-w32threads --disable-os2threads --enable-gpl --enable-libx264 --enable-libx265 --enable-libvpx --enable-libmp3lame --enable-libtheora --enable-libvorbis --enable-libopus --enable-zlib --enable-libwebp --enable-libfreetype --enable-libfribidi --enable-libass --enable-libzimg  libavutil      57. 28.100 / 57. 28.100  libavcodec     59. 37.100 / 59. 37.100  libavformat    59. 27.100 / 59. 27.100  libavdevice    59.  7.100 / 59.  7.100  libavfilter     8. 44.100 /  8. 44.100  libswscale      6.  7.100 /  6.  7.100  libswresample   4.  7.100 /  4.  7.100  libpostproc    56.  6.100 / 56.  6.100Aborted()",0]"""
+            )
         return run_sync_wrapper(
             ffmpegbridge(
                 args[0][0],
