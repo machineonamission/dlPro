@@ -2,19 +2,12 @@ function sandbox_run_js(code) {
     return new Promise((resolve, reject) => {
         // code = code.replaceAll("await import(", "await patch_import(")
         console.debug("worker sandbox running", code);
-        const blob = new Blob([
-            `
+        const blob = new Blob([`
+        
 self.console.log = (...a) => postMessage({"type": "log", "data": a.join(" ")});
-// async function patch_import (...a) {
-//     console.log(a);
-// }
-try {
-    ${code}
-} catch (e) {
-    console.log(e.toString());
-} finally {
-    postMessage({"type": "close"})
-}
+debugger;
+        ${code}
+postMessage({"type": "close"});
 `
         ], {type: "text/javascript"});
         const worker = new Worker(URL.createObjectURL(blob), { type: "module" });
@@ -31,11 +24,11 @@ try {
                     break;
             }
         };
-        worker.onerror(e => {
-            let err = e.toString();
-            console.error(err);
-            worker.close();
-            reject(err)
+        worker.addEventListener("error", e => {
+            console.error(e);
+            worker.terminate();
+            debugger
+            reject(e)
         })
     });
 }
