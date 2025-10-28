@@ -116,13 +116,17 @@ class SendToUserPP(PostProcessor):
         wrap_send_to_user(info["filepath"])
         return [], info
 
+def live_filter(info, *, incomplete):
+    if info.get("is_live"):
+        return "Livestreams cannot be downloaded"
 
 ydl_opts = {
     "outtmpl": "/dl/%(title)s [%(id)s].%(ext)s",
     "cookiefile": "/cookies.txt",
     # you need this or else yt-dlp leaves out info from the info_dict, which breaks changing formats
     "format": "all",
-    "verbose": True
+    "verbose": True,
+    "match_filter": live_filter  # no livestreams because they break things
 }
 
 filename = None

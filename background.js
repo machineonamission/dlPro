@@ -63,7 +63,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             chrome.tabs.create({url: chrome.runtime.getURL("/pages/jspi/index.html")});
             break
         case "settings":
-            browser.runtime.openOptionsPage();
+            chrome.runtime.openOptionsPage();
 
     }
     // async return
