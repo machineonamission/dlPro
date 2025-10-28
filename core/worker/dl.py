@@ -18,8 +18,9 @@ pyodide_http.patch_urllib()
 from pyodide.ffi import run_sync
 # patch yt-dlp to not call subprocesses, but to call ffmpeg.wasm
 from yt_dlp.utils import _utils
-from js import ffmpegbridge, Object, ask_user_for_format
+from js import ffmpegbridge, Object, ask_user_for_format, sandbox_run_js
 from pyodide.ffi import to_js
+
 
 # import pyodide.ffi
 
@@ -34,7 +35,38 @@ def run_sync_wrapper(func):
         print("WE ARE TRYING TO SEND THE FUCKING WARNING")
         # raise
 
+
 # pyodide.ffi.run_sync = run_sync_wrapper
+# just something to get yt-dlp to leave me alone
+deno_version = """deno 2.5.4 (stable, release, x86_64-pc-windows-msvc)
+v8 14.0.365.5-rusty
+typescript 5.9.2"""
+
+from yt_dlp.extractor.youtube.jsc.provider import (
+    register_provider,
+    register_preference,
+)
+from yt_dlp.extractor.youtube.jsc._builtin.deno import DenoJCP
+
+
+@register_provider
+class dlProJCP(DenoJCP):
+    def is_available(self, /) -> bool:
+        return True
+
+    def _run_deno(self, stdin, options) -> str:
+        print("DLPRO DENO CALLED")
+        return run_sync_wrapper(
+            sandbox_run_js(
+                stdin
+            )
+        )
+
+
+@register_preference(dlProJCP)
+def preference(*_) -> int:
+    return 99999999999999999
+
 
 # hijacks yt-dlp's attempts to run ffmpeg/ffprobe, and instead runs the ffmpeg.wasm bridge
 def popen_run(cls, *args, **kwargs):
@@ -50,11 +82,12 @@ def popen_run(cls, *args, **kwargs):
                 to_js(args[0][1:], dict_converter=Object.fromEntries)
             )
         ).to_py()
-    else:
-        print(f"yt-dlp attempted to call {args}, which isnt supported.")
-        # checked, this is what Popen runs if the exe isnt found, which is what we want since it essentially isnt
-        raise FileNotFoundError(f"yt-dlp attempted to call {args}, which isnt supported.")
-        # return "", "", 1
+    # if args[0] == ["deno", "--version"]:
+    #     return [deno_version, "", 0]
+    print(f"yt-dlp attempted to call {args}, which isnt supported.")
+    # checked, this is what Popen runs if the exe isnt found, which is what we want since it essentially isnt
+    raise FileNotFoundError(f"yt-dlp attempted to call {args}, which isnt supported.")
+    # return "", "", 1
 
 
 _utils.Popen.run = classmethod(popen_run)
@@ -91,7 +124,6 @@ with YoutubeDL(ydl_opts) as ydl:
     print(ydl.render_formats_table(info_dict))
     # sanitize for """json""" encoding
     info_dict_sanitized = ydl.sanitize_info(info_dict)
-
 
 # delete our "all" key and let the user select
 del ydl_opts["format"]

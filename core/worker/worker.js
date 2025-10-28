@@ -131,6 +131,8 @@ async function main() {
         "/core/worker/xmlproxy_worker.js",
         // create a worker for streaming requests
         "/core/worker/pyodide_streaming_worker_proxy.js",
+        // handle new js stuff
+        "/core/worker/jsc.js",
     )
     // load Pyodide and import required things
     console.log("Loading Pyodide and yt-dlp");
@@ -151,9 +153,9 @@ async function main() {
         stdLibURL: "/libs/pyodide/python_stdlib.zip.pyodide",
         packages: [
             // "ssl",
-            ytdlpurl
+            // ytdlpurl
             // "https://files.pythonhosted.org/packages/eb/27/d57bf59a3e42613c200fc3e3ff43febadb9355c27e92fef7612a8335965b/yt_dlp-2025.10.25.232842.dev0-py3-none-any.whl"
-            // "/libs/pyodide/yt_dlp-2025.9.23-py3-none-any.whl",
+            "/libs/pyodide/yt_dlp-2025.10.22-py3-none-any.whl",
             // "/libs/pyodide/openssl-1.1.1w.zip.pyodide",
         ]
     });
