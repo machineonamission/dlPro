@@ -68,6 +68,43 @@ function save_data(data, fileName) {
     }, 0)
 }
 
+// message receiver
+function worker_port_onmessage(event) {
+    console.debug("iframe received message from worker", event.data)
+    let message = event.data;
+    // console.log("content", message)
+    switch (message.type) {
+        case "log":
+            // log to the console
+            uilog(message.data);
+            break;
+        case "result":
+            save_data(message.contents, message.name);
+            break
+        case "format":
+            // ask the user for a format
+            ask_user_for_format(message.info_dict).then(format => {
+                worker_port.postMessage({
+                    type: "format",
+                    format: format
+                });
+            });
+            break;
+        case "sandbox_run_js":
+            sandbox_run_js(message.code).then(result => {
+                worker_port.postMessage({
+                    type: "sandbox_run_js",
+                    result: result,
+                });
+            }).catch(error => {
+                worker_port.postMessage({
+                    type: "sandbox_run_js",
+                    result: error.toString(),
+                });
+            });
+    }
+}
+
 async function main() {
     // spawn our worker
     dlpro_worker = new Worker("/core/worker/worker.js");
@@ -75,30 +112,10 @@ async function main() {
     const worker_channel = new MessageChannel();
     worker_port = worker_channel.port1;
     dlpro_worker.postMessage("init", [worker_channel.port2, content_to_worker_port]);
-    // message receiver
-    worker_port.onmessage = event => {
-        console.debug("iframe received message from worker", event.data)
-        let message = event.data;
-        // console.log("content", message)
-        switch (message.type) {
-            case "log":
-                // log to the console
-                uilog(message.data);
-                break;
-            case "result":
-                save_data(message.contents, message.name);
-                break
-            case "format":
-                // ask the user for a format
-                ask_user_for_format(message.info_dict).then(format => {
-                    worker_port.postMessage({
-                        type: "format",
-                        format: format
-                    });
-                });
-                break;
-        }
-    }
+    worker_port.onmessage = worker_port_onmessage
+
+
+
     // send to worker
     worker_port.postMessage({type: "dlurl", dlurl: await dlurl.promise});
     worker_port.postMessage({type: "cookies", "cookies": await cookies.promise});

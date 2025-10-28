@@ -18,7 +18,7 @@ pyodide_http.patch_urllib()
 from pyodide.ffi import run_sync
 # patch yt-dlp to not call subprocesses, but to call ffmpeg.wasm
 from yt_dlp.utils import _utils
-from js import ffmpegbridge, Object, ask_user_for_format, sandbox_run_js
+from js import ffmpegbridge, Object, ask_user_for_format, request_js
 from pyodide.ffi import to_js
 
 
@@ -51,16 +51,21 @@ from yt_dlp.extractor.youtube.jsc._builtin.deno import DenoJCP
 
 @register_provider
 class dlProJCP(DenoJCP):
+    PROVIDER_NAME = 'dlPro'
+    JS_RUNTIME_NAME = 'dlPro'
     def is_available(self, /) -> bool:
         return True
 
     def _run_deno(self, stdin, options) -> str:
         print("DLPRO DENO CALLED")
         return run_sync_wrapper(
-            sandbox_run_js(
+            request_js(
                 stdin
             )
         )
+
+#     def _npm_packages_cached(self, stdin: str) -> bool:
+#         return True
 
 
 @register_preference(dlProJCP)

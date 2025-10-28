@@ -19,6 +19,7 @@ console.log = function (...args) {
 let cookies = promise_init();
 let dlurl = promise_init();
 let format = promise_init();
+let js_sandbox_promise;
 
 let iframe_port;
 let content_port;
@@ -27,6 +28,15 @@ function firefox_jspi_warning() {
     content_port.postMessage({
         type: "firefox_jspi_warning",
     });
+}
+
+function request_js(code) {
+    js_sandbox_promise = promise_init();
+    iframe_port.postMessage({
+        type: "sandbox_run_js",
+        code: code
+    });
+    return js_sandbox_promise.promise;
 }
 
 
@@ -55,6 +65,10 @@ function iframe_port_onmessage(event) {
         case "format":
             format.resolve(message.format);
             break;
+        case "sandbox_run_js":
+            js_sandbox_promise.resolve(message.result)
+            js_sandbox_promise = null;
+            return;
     }
 }
 
@@ -131,8 +145,6 @@ async function main() {
         "/core/worker/xmlproxy_worker.js",
         // create a worker for streaming requests
         "/core/worker/pyodide_streaming_worker_proxy.js",
-        // handle new js stuff
-        "/core/worker/jsc.js",
     )
     // load Pyodide and import required things
     console.log("Loading Pyodide and yt-dlp");

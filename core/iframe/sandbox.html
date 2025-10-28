@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+<body>
+<script type="module">
+    window.addEventListener("message", e => {
+        const code = e.data;
+        const logs = [];
+        let url;
+        debugger
+        try {
+            const origlog = console.log;
+            // intercept logs
+            const log = (...args) => {
+                origlog(...args);
+                logs.push(args.join(" "))
+            };
+            console.log = log;
+            console.warn = log;
+            console.error = log;
+
+            // run AS A MODULE
+            const blob = new Blob([code], { type: 'text/javascript' })
+            url = URL.createObjectURL(blob)
+            import(url)
+        } finally {
+            URL.revokeObjectURL(url)
+            e.source.postMessage(logs.join("\n"));
+        }
+    });
+</script>
+</body>
+</html>
