@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json.schemastore.org/chrome-manifest.json",
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "dlpro@machineonamission.me"
+    }
+  },
+  "manifest_version": 3,
+  "name": "dlPro",
+  "description": "yt-dlp, the most powerful web video downloader, now fully embedded in your browser.",
+  "version": "1.1.0",
+  "options_page": "/pages/settings/index.html",
+  "options_ui": {
+    "page": "/pages/settings/index.html",
+    "open_in_tab": true
+  },
+  "action": {
+    "default_title": "dlPro: click to download current page"
+  },
+  "permissions": [
+    "scripting",
+    "cookies",
+    "storage"
+  ],
+  "host_permissions": [
+    "*://*/*"
+  ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self';",
+    "sandbox": "sandbox allow-scripts; script-src 'self' 'unsafe-eval' 'unsafe-inline' blob: https://esm.sh;"
+  },
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "core/content/*",
+        "logo/*",
+        "core/iframe/iframe.html",
+        "core/iframe/sandbox.html"
+      ],
+      "matches": [
+        "<all_urls>"
+      ]
+    }
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "icons": {
+    "16": "logo/shadow/logo-16.png",
+    "32":  "logo/shadow/logo-32.png",
+    "48":  "logo/shadow/logo-48.png",
+    "64":  "logo/shadow/logo-64.png",
+    "128":  "logo/shadow/logo-128.png"
+  },
+  "sandbox": {
+    "pages": ["core/iframe/sandbox.html"]
+  }
+}
