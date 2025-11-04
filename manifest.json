@@ -54,6 +54,6 @@
     "128":  "logo/shadow/logo-128.png"
   },
   "sandbox": {
-    "pages": ["core/sandbox/sandbox.html"],
+    "pages": ["core/sandbox/sandbox.html"]
   }
 }

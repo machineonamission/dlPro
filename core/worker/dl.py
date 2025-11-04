@@ -66,7 +66,7 @@ if importlib.util.find_spec("yt_dlp.extractor.youtube.jsc"):
             return res
 
         def _npm_packages_cached(self, stdin: str) -> bool:
-            return True
+            return False
 
     @register_preference(dlProJCP)
     def preference(*_) -> int:
@@ -128,7 +128,8 @@ ydl_opts = {
     # you need this or else yt-dlp leaves out info from the info_dict, which breaks changing formats
     "format": "all",
     "verbose": True,
-    "match_filter": live_filter  # no livestreams because they break things
+    "match_filter": live_filter,  # no livestreams because they break things
+    "remote_components": ["ejs:github", "ejs:npm"]
 }
 
 filename = None
