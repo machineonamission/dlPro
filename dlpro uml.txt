@@ -1,0 +1,101 @@
+title dlPro Event Sequence
+
+
+actor user
+user->background: user clicks extension icon
+background->*content: spawns content
+content->background: requests cookies
+box over content:creates area for iframe
+content->*iframe: creates iframe
+participant sandbox
+box over iframe:inits primary UI
+background->content:sends cookies\n
+content->iframe:sends download url and cookies
+iframe->*worker: spawns worker
+iframe->worker: sends cookies and dlurl
+box over worker:fetches latest yt-dlp
+worker->*pyodide:inits pyodide and libs
+participant ffmpegwasm
+worker->pyodide:runs yt-dlp
+pyodide->*yt-dlp:inits and patches yt-dlp
+pyodide->yt-dlp:runs extract_info
+ref over yt-dlp:see http request section later
+yt-dlp->pyodide:returns info
+pyodide->worker:asks user for selection
+worker->iframe:forwards request
+iframe->user:presents UI to user
+user->iframe:makes format selection
+iframe->worker:sends user selection
+worker->pyodide:forwards
+pyodide->yt-dlp:runs yt-dlp downloader
+note over yt-dlp:these sections aren't necessarily ran in this order, or at all
+group http request [ran whenever yt-dlp makes an http request]
+yt-dlp->*pyodide_http_fork:monkey patched http request
+alt request contains origin header
+note over pyodide_http_fork: origin header can't be faked, must be sent from origin
+pyodide_http_fork->worker:proxy_fetch
+worker->content:forwards
+box over content:normal xmlhttprequest
+note over content:requests from here match page's origin
+content->worker:request result
+worker->pyodide_http_fork:forwards
+else request does not contain origin header
+alt browser supports atomics
+note over pyodide_http_fork:stream request for better progress indicator
+pyodide_http_fork->*streaming worker:starts request
+box over streaming worker:fetch request
+streaming worker->pyodide_http_fork:sends progress via atomics
+streaming worker->pyodide_http_fork:sends success/error code
+destroyafter streaming worker
+else browser doesn't support atomics
+box over pyodide_http_fork:normal xmlhttprequest
+end
+end
+pyodide_http_fork->yt-dlp:http result
+destroysilent pyodide_http_fork
+end
+group JS challenge [ran when page needs advanced JS-based captcha solving]
+
+yt-dlp->pyodide:hits registered JSC handler
+pyodide->worker:sends js
+worker->iframe:forwards
+iframe->*sandbox:creates sandbox to run arbitrary js
+iframe->sandbox:sends JS code (patched npm import calls)
+sandbox->iframe:sends result
+iframe->sandbox:removes
+destroy sandbox
+iframe->worker:forwards
+worker->pyodide:forwards
+pyodide->yt-dlp:returns result
+
+end
+
+group ffmpeg/ffprobe call [ran when media file needs processing]
+yt-dlp->pyodide:monkey patched popen
+pyodide-->yt-dlp:hardcoded result for basic ffprobe capabilities
+pyodide->*ffmpegwasm:spawns ffmpegwasm
+pyodide->ffmpegwasm:loads libs
+pyodide->ffmpegwasm:copies or moves files
+pyodide->ffmpegwasm:execute command
+ffmpegwasm->pyodide:stdout results
+ffmpegwasm->pyodide:command completed
+ffmpegwasm->pyodide:pyodide moves files
+box over ffmpegwasm:ffmpeg worker is kept alive if needed again
+destroysilent ffmpegwasm
+end
+
+yt-dlp->pyodide:postprocessor hook is called
+pyodide->worker:send_to_user
+pyodide->worker:worker moves files
+worker->iframe:copies files
+iframe->user:copies files
+yt-dlp->pyodide:execution finishes
+destroyafter yt-dlp
+worker->pyodide:waits for files to finish sending
+destroyafter pyodide
+destroy worker
+user->content:requests dlpro close
+content->iframe:removes iframe
+destroyafter iframe
+box over content:execution finishes
+destroysilent content
