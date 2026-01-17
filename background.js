@@ -61,7 +61,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             break;
         case "firefox_jspi_warning":
             chrome.tabs.create({url: chrome.runtime.getURL("/pages/jspi/index.html")});
-            break
+            break;
         case "settings":
             chrome.runtime.openOptionsPage();
 

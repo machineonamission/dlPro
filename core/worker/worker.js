@@ -66,7 +66,7 @@ function iframe_port_onmessage(event) {
             format.resolve(message.format);
             break;
         case "sandbox_run_js":
-            js_sandbox_promise.resolve(message.result)
+            js_sandbox_promise.resolve(message.result);
             js_sandbox_promise = null;
             return;
     }
@@ -229,9 +229,11 @@ async function main() {
     // wait to receive the download URL if we havent
     console.log("running yt-dlp")
     // run the Python script to download the video
-    // yes passing the url like this is hacky, but who cares
+    // Escape the URL to prevent code injection using JSON.stringify for safe escaping
+    const url = await dlurl.promise;
+    const escapedUrl = JSON.stringify(url);
     await pyodide.runPythonAsync(
-        `downloadURL = """${await dlurl.promise}"""\n${await (await fetch("/core/worker/dl.py")).text()}`
+        `downloadURL = ${escapedUrl}\n${await (await fetch("/core/worker/dl.py")).text()}`
     );
     console.log("yt-dlp finished");
     // wait for any pending file receives to finish

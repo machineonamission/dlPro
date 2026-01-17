@@ -34,7 +34,23 @@ function proxy_fetch(request) {
                     "body": xhr.response,
                 });
             }
-        }
+        };
+
+        xhr.onerror = () => {
+            resolve({
+                "status_code": 0,
+                "headers": "",
+                "body": new ArrayBuffer(0),
+            });
+        };
+
+        xhr.ontimeout = () => {
+            resolve({
+                "status_code": 0,
+                "headers": "",
+                "body": new ArrayBuffer(0),
+            });
+        };
 
         xhr.open(method, url, true);
 

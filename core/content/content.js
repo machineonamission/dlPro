@@ -90,7 +90,11 @@ function init() {
             // console.log("content got cookies from background script", c);
             iframe_port.postMessage({"type": "cookies", "cookies": c});
             // window.__dlpro_cookies = null;
-        })
+        }).catch(err => {
+            console.error("[dlPro] Failed to get cookies:", err);
+            // Continue without cookies - yt-dlp can still work without them
+            iframe_port.postMessage({"type": "cookies", "cookies": ""});
+        });
         iframe_port.postMessage({"type": "dlurl", "dlurl": location.href});
         worker_port.onmessage = e => {
             console.debug("content received message from worker", e.data);
