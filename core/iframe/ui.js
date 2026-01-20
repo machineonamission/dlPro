@@ -23,6 +23,7 @@ const presets = {
         }]
     },
     "Smallest": { // https://github.com/yt-dlp/yt-dlp#format-selection
+        "format": "b",
         "format_sort": ["+size", "+br", "+res", "+fps"]
     },
 };
