@@ -13,11 +13,18 @@ function uilog(message) {
 // presets, always expandable. they map to yt-dlp options
 const presets = {
     "Best": {},
-    "Audio": {
-        "format": "bestaudio"
+    "Audio": { // -x
+        "format": "ba/b",
+        "postprocessors": [{
+            "key": "FFmpegExtractAudio",
+            "nopostoverwrites": false,
+            "preferredcodec": "best",
+            "preferredquality": "5"
+        }]
     },
-    "Smallest": {
-        "format_sort": ["+size", "+br"]
+    "Smallest": { // https://github.com/yt-dlp/yt-dlp#format-selection
+        "format": "b",
+        "format_sort": ["+size", "+br", "+res", "+fps"]
     },
 };
 
