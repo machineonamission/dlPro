@@ -223,7 +223,9 @@ async function main() {
     console.log("loading openssl, ssl, and pyodide_http_fork");
     await Promise.all([load_ssl(), load_pyodide_http_fork()])
 
-    pyodide.FS.mkdir("/dl")
+    // pyodide.FS.mkdir("/dl")
+    let opfs = await navigator.storage.getDirectory();
+    await pyodide.mountNativeFS("/dl", opfs);
     // pass cookie file
     pyodide.FS.writeFile('/cookies.txt', await cookies.promise);
     // wait to receive the download URL if we havent
@@ -246,7 +248,8 @@ let awaiting_sends = []
 async function send_to_user(path) {
     console.log(`moving ${path} from yt-dlp to worker`);
     let contents = pyodide.FS.readFile(path, {encoding: 'binary'});
-    pyodide.FS.unlink(path);
+    debugger
+    // pyodide.FS.unlink(path);
     // let blob = new Blob(contents);
     // let burl = URL.createObjectURL(blob);
     console.log(`moving ${path} from worker to iframe`);

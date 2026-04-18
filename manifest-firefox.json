@@ -7,7 +7,7 @@
   "manifest_version": 3,
   "name": "dlPro",
   "description": "yt-dlp, the most powerful web video downloader, now fully embedded in your browser.",
-  "version": "1.1.1",
+  "version": "1.2.0",
   "options_page": "/pages/settings/index.html",
   "options_ui": {
     "page": "/pages/settings/index.html",
