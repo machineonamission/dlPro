@@ -2,7 +2,46 @@ let loaded = false;
 let ffmpeg = null;
 
 
-async function ffmpegbridge(mode, args) {
+// ripped from ffmpegwasm utils
+const readFromBlobOrFile = (blob) => new Promise((resolve, reject) => {
+    const fileReader = new FileReader();
+    fileReader.onload = () => {
+        const {result} = fileReader;
+        if (result instanceof ArrayBuffer) {
+            resolve(new Uint8Array(result));
+        } else {
+            resolve(new Uint8Array());
+        }
+    };
+    fileReader.onerror = (event) => {
+        reject(Error(`File could not be read! Code=${event?.target?.error?.code || -1}`));
+    };
+    fileReader.readAsArrayBuffer(blob);
+});
+const fetchFile = async (file) => {
+    let data;
+    if (typeof file === "string") {
+        /* From base64 format */
+        if (/data:_data\/([a-zA-Z]*);base64,([^"]*)/.test(file)) {
+            data = atob(file.split(",")[1])
+                .split("")
+                .map((c) => c.charCodeAt(0));
+            /* From remote server/URL */
+        } else {
+            data = await (await fetch(file)).arrayBuffer();
+        }
+    } else if (file instanceof URL) {
+        data = await (await fetch(file)).arrayBuffer();
+    } else if (file instanceof File || file instanceof Blob) {
+        data = await readFromBlobOrFile(file);
+    } else {
+        return new Uint8Array();
+    }
+    return new Uint8Array(data);
+};
+
+
+async function ffmpegbridge(mode, args, joint_out) {
     try {
         // yt-dlp, in youtube, checks ffmpeg version and merging capability. we dont need to actually launch ffmpeg for
         // this
@@ -10,10 +49,12 @@ async function ffmpegbridge(mode, args) {
         if (!loaded) {
             await load()
         }
+        let temp_count = 0;
+        let waits = [];
         if (mode === "ffmpeg") {
             // look for -i file patterns, and copy those files to ffmpeg
             let is_input = false;
-            for (let arg of args) {
+            for (let [index, arg] of args.entries()) {
                 if (arg === "-i") {
                     is_input = true;
                     continue
@@ -24,21 +65,51 @@ async function ffmpegbridge(mode, args) {
                     if (file.startsWith("file:")) {
                         file = file.slice(5);
                     }
-                    console.log(`moving file ${file} from pyodide to ffmpeg`)
-                    await ffmpeg.writeFile(file, pyodide.FS.readFile(file));
-                    // also remove from pyodide. trying to save memory.
-                    pyodide.FS.unlink(file);
+                    if (file.includes("://")) {
+                        let temp_name = `/dl/temp${temp_count}`;
+                        console.log(`downloading ${file} to ${temp_name}`)
+                        console.log("WARNING: yt-dlp requested ffmpeg to download the file, but ffmpeg in the browser can't do that. dlPro downloading the file for it, but it may download more and/or be slower than native yt-dlp")
+
+                        async function write() {
+                            await ffmpeg.writeFile(temp_name, await fetchFile(file));
+                        }
+
+                        waits.push(write())
+                        args[index] = temp_name;
+                        temp_count += 1;
+                    } else {
+                        console.log(`moving file ${file} from pyodide to ffmpeg`)
+
+                        async function write() {
+
+                            await ffmpeg.writeFile(file, pyodide.FS.readFile(file));
+                            // also remove from pyodide. trying to save memory.
+                            pyodide.FS.unlink(file);
+                        }
+
+                        waits.push(write())
+
+                    }
                     is_input = false;
                 }
             }
+            for (let i = 0; i < args.length; i++) {
+                if (args[i] === "-headers") {
+                    args.splice(i, 2)
+                    i--;
+                }
+            }
+            await Promise.all(waits);
         } else if (mode === "ffprobe") {
             // ffprobe just takes the last argument as the file to probe
             let file = args.at(-1);
             if (file.startsWith("file:")) {
                 file = file.slice(5);
             }
-            console.log(`moving file ${file} from pyodide to ffprobe`)
-            await ffmpeg.writeFile(file, pyodide.FS.readFile(file));
+            if (!file.startsWith("-")) {
+                console.log(`moving file ${file} from pyodide to ffprobe`)
+                await ffmpeg.writeFile(file, pyodide.FS.readFile(file));
+            }
             // do NOT delete ffprobe inputs
         }
 
@@ -53,7 +124,11 @@ async function ffmpegbridge(mode, args) {
                     console.log("[ffmpeg]", message);
                     break;
                 case "stderr":
-                    stderr += message;
+                    if (joint_out) {
+                        stdout += message;
+                    } else {
+                        stderr += message;
+                    }
                     console.log("[ffmepg err]", message);
                     break;
                 default:

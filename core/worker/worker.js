@@ -139,6 +139,7 @@ async function main() {
         // libs
         "/libs/pyodide/pyodide.js",
         "/libs/ffmpeg/ffmpeg.js",
+        // "/libs/ffmpeg/util.js",
         // ffmpeg wrapper
         "/core/worker/ffmpeg-bridge.js",
         // proxy requests
@@ -176,8 +177,13 @@ async function main() {
         indexURL: "/libs/pyodide/",
         stdLibURL: "/libs/pyodide/python_stdlib.zip.pyodide",
         packages: [
-            // "ssl",
-            ytdlpurl
+            // "/libs/pyodide/snoop-0.6.0-py3-none-any.whl",
+            // "/libs/pyodide/asttokens-3.0.1-py3-none-any.whl",
+            // "/libs/pyodide/cheap_repr-0.5.2-py2.py3-none-any.whl",
+            // "/libs/pyodide/executing-2.2.1-py2.py3-none-any.whl",
+            // "/libs/pyodide/pygments-2.20.0-py3-none-any.whl",
+            ytdlpurl,
+            // "pydevd-pycharm"
             // "https://files.pythonhosted.org/packages/eb/27/d57bf59a3e42613c200fc3e3ff43febadb9355c27e92fef7612a8335965b/yt_dlp-2025.10.25.232842.dev0-py3-none-any.whl"
             // "/libs/pyodide/yt_dlp-2025.10.22-py3-none-any.whl",
             // "/libs/pyodide/openssl-1.1.1w.zip.pyodide",
@@ -222,6 +228,7 @@ async function main() {
 
     console.log("loading openssl, ssl, and pyodide_http_fork");
     await Promise.all([load_ssl(), load_pyodide_http_fork()])
+    // await pyodide.loadPackage("micropip")
 
     pyodide.FS.mkdir("/dl")
     // pass cookie file
